@@ -39,6 +39,12 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Tab toggle */}
+      <div className="flex gap-2">
+        <Button size="sm" variant={tab === "overview" ? "default" : "outline"} onClick={() => setTab("overview")}>Overview</Button>
+        <Button size="sm" variant={tab === "graph" ? "default" : "outline"} onClick={() => setTab("graph")}>Graph View</Button>
+      </div>
+
       {/* Stats */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
