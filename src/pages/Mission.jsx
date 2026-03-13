@@ -26,7 +26,7 @@ const STARTER_PROMPTS = [
   "Define the concept of a 'state' in your domain mathematically, and how state transitions are computed.",
 ];
 
-function AgentPanel({ agent, mission }) {
+function AgentPanel({ agent, mission, onDone }) {
   const [status, setStatus] = useState("idle"); // idle | working | done | error
   const [response, setResponse] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -60,6 +60,7 @@ function AgentPanel({ agent, mission }) {
           doneTimerRef.current = setTimeout(() => {
             setStatus("done");
             setExpanded(true);
+            if (onDone) onDone();
           }, 3000);
         }
       });
@@ -239,7 +240,7 @@ export default function Mission() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {agents.map(agent => (
-              <AgentPanel key={`${agent.key}-${missionKey}`} agent={agent} mission={activeMission} />
+              <AgentPanel key={`${agent.key}-${missionKey}`} agent={agent} mission={activeMission} onDone={onAgentDone} />
             ))}
           </div>
         </div>
