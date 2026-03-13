@@ -51,6 +51,7 @@ function AgentPanel({ agent, mission, onDone, onResponse }) {
         const lastAssistant = [...msgs].reverse().find(m => m.role === "assistant");
         if (lastAssistant?.content) {
           setResponse(lastAssistant.content);
+          if (onResponse) onResponse(agent.key, lastAssistant.content);
         }
 
         // Only mark done after 3s of silence (no new updates) AND last msg is assistant with content
