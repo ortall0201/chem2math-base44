@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FlaskConical, Bot, Menu, X } from "lucide-react";
+import { LayoutDashboard, BookOpen, FlaskConical, Bot, Menu, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ const navItems = [
   { path: "/Domains", label: "Domains", icon: FlaskConical },
   { path: "/Dictionary", label: "Dictionary", icon: BookOpen },
   { path: "/Agents", label: "Agents", icon: Bot },
+  { path: "/Mission", label: "Team Mission", icon: Zap },
 ];
 
 export default function AppLayout() {

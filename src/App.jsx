@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Domains from './pages/Domains';
 import Dictionary from './pages/Dictionary';
 import Agents from './pages/Agents';
+import Mission from './pages/Mission';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -40,6 +41,7 @@ const AuthenticatedApp = () => {
         <Route path="/Domains" element={<Domains />} />
         <Route path="/Dictionary" element={<Dictionary />} />
         <Route path="/Agents" element={<Agents />} />
+        <Route path="/Mission" element={<Mission />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
