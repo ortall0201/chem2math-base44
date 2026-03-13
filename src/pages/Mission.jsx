@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Zap, Send, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import MissionReportButton from "../components/mission/MissionReportButton";
 
 const agents = [
   { key: "electrochemistry_researcher", codename: "Faraday", domain: "Electrochemistry", color: "#0ea5e9" },
