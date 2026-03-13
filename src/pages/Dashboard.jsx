@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import StatsRow from "../components/dashboard/StatsRow";
 import DomainCard from "../components/dashboard/DomainCard";
+import GraphView from "../components/dashboard/GraphView";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { data: domains = [], isLoading: domainsLoading } = useQuery({
