@@ -47,53 +47,55 @@ export default function Dashboard() {
 
       {tab === "graph" && <GraphView entries={entries} />}
 
-      {/* Stats */}
-      {tab === "overview" && isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
-      ) : (
-        <StatsRow
-          totalEntries={entries.length}
-          domainCount={domains.length}
-          codeEntries={codeEntries}
-          translatedEntries={translatedEntries}
-        />
-      )}
-
-      {/* Domains Grid */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Research Domains</h2>
+      {tab === "overview" && <>
+        {/* Stats */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {domains.map(d => (
-              <DomainCard key={d.id} domain={d} entryCount={getEntryCount(d.domain_key)} />
-            ))}
+          <StatsRow
+            totalEntries={entries.length}
+            domainCount={domains.length}
+            codeEntries={codeEntries}
+            translatedEntries={translatedEntries}
+          />
+        )}
+
+        {/* Domains Grid */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Research Domains</h2>
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {domains.map(d => (
+                <DomainCard key={d.id} domain={d} entryCount={getEntryCount(d.domain_key)} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Entries */}
+        {entries.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Recent Dictionary Entries</h2>
+            <div className="space-y-3">
+              {entries.slice(0, 5).map(entry => (
+                <div key={entry.id} className="rounded-xl border border-border/50 bg-card/30 p-4 flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{entry.concept_name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{entry.domain?.replace(/_/g, ' ')}</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground capitalize">{entry.status || 'draft'}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Recent Entries */}
-      {entries.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Recent Dictionary Entries</h2>
-          <div className="space-y-3">
-            {entries.slice(0, 5).map(entry => (
-              <div key={entry.id} className="rounded-xl border border-border/50 bg-card/30 p-4 flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{entry.concept_name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{entry.domain?.replace(/_/g, ' ')}</p>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground capitalize">{entry.status || 'draft'}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </>}
     </div>
   );
 }
