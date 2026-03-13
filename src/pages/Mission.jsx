@@ -252,6 +252,29 @@ export default function Mission() {
           <p className="text-sm text-muted-foreground">Launch a mission to deploy all agents simultaneously.</p>
         </div>
       )}
+
+      {/* Past missions */}
+      {pastMissions.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Mission History</p>
+          {pastMissions.map(m => (
+            <div key={m.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-border/30 bg-card/30">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground truncate">{m.prompt}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{new Date(m.created_date).toLocaleString()}</p>
+              </div>
+              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                {m.entries_saved > 0 && (
+                  <Badge variant="outline" className="text-xs text-primary border-primary/30">{m.entries_saved} entries</Badge>
+                )}
+                <Badge variant="outline" className={`text-xs ${m.status === "completed" ? "text-green-500 border-green-500/30" : "text-yellow-500 border-yellow-500/30"}`}>
+                  {m.status}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
