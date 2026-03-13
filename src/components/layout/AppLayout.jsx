@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, BookOpen, FlaskConical, Bot, Menu, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
