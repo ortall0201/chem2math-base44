@@ -120,7 +120,19 @@ export default function Dictionary() {
       </div>}
 
       {/* Results */}
-      {isLoading ? (
+      {mode === "semantic" && semanticResults !== null && (
+        semanticResults.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground text-sm">No matching entries found.</div>
+        ) : (
+          <div className="space-y-3">
+            {semanticResults.map(entry => (
+              <DictEntryRow key={entry.id} entry={entry} score={entry.score} />
+            ))}
+          </div>
+        )
+      )}
+
+      {(mode === "keyword") && isLoading ? (
         <div className="text-center py-20 text-muted-foreground text-sm">Loading dictionary...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
