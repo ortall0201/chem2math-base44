@@ -26,7 +26,7 @@ const STARTER_PROMPTS = [
   "Define the concept of a 'state' in your domain mathematically, and how state transitions are computed.",
 ];
 
-function AgentPanel({ agent, mission, onDone }) {
+function AgentPanel({ agent, mission, onDone, onResponse }) {
   const [status, setStatus] = useState("idle"); // idle | working | done | error
   const [response, setResponse] = useState("");
   const [expanded, setExpanded] = useState(false);
