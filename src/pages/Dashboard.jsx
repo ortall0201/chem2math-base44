@@ -46,6 +46,8 @@ export default function Dashboard() {
         <Button size="sm" variant={tab === "graph" ? "default" : "outline"} onClick={() => setTab("graph")}>Graph View</Button>
       </div>
 
+      <AgentMonitor />
+
       {tab === "graph" && <GraphView entries={entries} />}
 
       {tab === "overview" && <>
