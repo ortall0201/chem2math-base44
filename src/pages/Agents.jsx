@@ -11,12 +11,12 @@ import MessageBubble from "../components/agents/MessageBubble";
 import { cn } from "@/lib/utils";
 
 const agents = [
-  { key: "electrochemistry_researcher", name: "Dr. Elena Vasquez", domain: "Electrochemistry", color: "#0ea5e9" },
-  { key: "thermochemistry_researcher", name: "Prof. Heinrich Müller", domain: "Thermochemistry", color: "#f97316" },
-  { key: "kinetics_researcher", name: "Prof. Akira Tanaka", domain: "Kinetics", color: "#22c55e" },
-  { key: "organic_chemistry_researcher", name: "Prof. Marie Dubois", domain: "Organic Chemistry", color: "#a855f7" },
-  { key: "quantum_chemistry_researcher", name: "Prof. Niels Johansson", domain: "Quantum Chemistry", color: "#ec4899" },
-  { key: "stoichiometry_researcher", name: "Prof. Ada Okonkwo", domain: "Stoichiometry", color: "#eab308" },
+  { key: "electrochemistry_researcher", name: "Faraday", domain: "Electrochemistry", color: "#0ea5e9" },
+  { key: "thermochemistry_researcher", name: "Carnot", domain: "Thermochemistry", color: "#f97316" },
+  { key: "kinetics_researcher", name: "Arrhenius", domain: "Kinetics", color: "#22c55e" },
+  { key: "organic_chemistry_researcher", name: "Kekulé", domain: "Organic Chemistry", color: "#a855f7" },
+  { key: "quantum_chemistry_researcher", name: "Bohr", domain: "Quantum Chemistry", color: "#ec4899" },
+  { key: "stoichiometry_researcher", name: "Lavoisier", domain: "Stoichiometry", color: "#eab308" },
 ];
 
 export default function Agents() {
