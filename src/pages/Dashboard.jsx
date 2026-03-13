@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import StatsRow from "../components/dashboard/StatsRow";
 import DomainCard from "../components/dashboard/DomainCard";
 import GraphView from "../components/dashboard/GraphView";
+import AgentMonitor from "../components/dashboard/AgentMonitor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
