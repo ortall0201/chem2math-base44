@@ -247,7 +247,7 @@ export default function Mission() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {agents.map(agent => (
-              <AgentPanel key={`${agent.key}-${missionKey}`} agent={agent} mission={activeMission} onDone={onAgentDone} />
+              <AgentPanel key={`${agent.key}-${missionKey}`} agent={agent} mission={activeMission} onDone={onAgentDone} onResponse={handleAgentResponse} />
             ))}
           </div>
         </div>
