@@ -84,40 +84,42 @@ export default function Dictionary() {
       )}
 
       {/* Filters */}
-      {mode === "keyword" && <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search concepts, equations, code..."
-            className="pl-9 bg-card/50"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+      {mode === "keyword" && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search concepts, equations, code..."
+              className="pl-9 bg-card/50"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={domainFilter} onValueChange={setDomainFilter}>
+            <SelectTrigger className="w-48 bg-card/50">
+              <SelectValue placeholder="All Domains" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Domains</SelectItem>
+              {Object.entries(domainLabels).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 bg-card/50">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="reviewed">Reviewed</SelectItem>
+              <SelectItem value="validated">Validated</SelectItem>
+              <SelectItem value="needs_revision">Needs Revision</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={domainFilter} onValueChange={setDomainFilter}>
-          <SelectTrigger className="w-48 bg-card/50">
-            <SelectValue placeholder="All Domains" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Domains</SelectItem>
-            {Object.entries(domainLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-card/50">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="reviewed">Reviewed</SelectItem>
-            <SelectItem value="validated">Validated</SelectItem>
-            <SelectItem value="needs_revision">Needs Revision</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>}
+      )}
 
       {/* Results */}
       {mode === "semantic" && semanticResults !== null && (
