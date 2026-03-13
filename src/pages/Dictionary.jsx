@@ -32,6 +32,8 @@ export default function Dictionary() {
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [mode, setMode] = useState("keyword"); // "keyword" | "semantic"
+  const [semanticResults, setSemanticResults] = useState(null);
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["dictionary"],
