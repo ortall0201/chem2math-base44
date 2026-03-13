@@ -240,6 +240,9 @@ export default function Mission() {
             <div className="h-px flex-1 bg-border/30" />
             <Badge variant="outline" className="text-xs font-mono">Mission Active</Badge>
             <div className="h-px flex-1 bg-border/30" />
+            {activeMissionRecord && (
+              <MissionReportButton mission={activeMissionRecord} agentResponses={agentResponses} />
+            )}
           </div>
           <div className="bg-secondary/20 rounded-xl border border-border/30 px-4 py-3">
             <p className="text-xs text-muted-foreground mb-1">Mission Brief</p>
