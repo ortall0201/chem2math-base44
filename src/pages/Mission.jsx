@@ -179,6 +179,7 @@ export default function Mission() {
     setActiveMissionRecord(record);
     setActiveMission(prompt.trim());
     setMissionKey(k => k + 1);
+    setAgentResponses({});
     queryClient.invalidateQueries({ queryKey: ["missions"] });
   };
 
