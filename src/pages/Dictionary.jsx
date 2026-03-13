@@ -60,8 +60,31 @@ export default function Dictionary() {
         <Badge variant="outline" className="ml-2 font-mono">{entries.length} entries</Badge>
       </div>
 
+      {/* Mode toggle */}
+      <div className="flex gap-2">
+        <Button
+          size="sm" variant={mode === "keyword" ? "default" : "outline"}
+          onClick={() => { setMode("keyword"); setSemanticResults(null); }}
+          className="gap-1.5"
+        >
+          <Search className="w-3.5 h-3.5" /> Keyword
+        </Button>
+        <Button
+          size="sm" variant={mode === "semantic" ? "default" : "outline"}
+          onClick={() => setMode("semantic")}
+          className="gap-1.5"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Semantic
+        </Button>
+      </div>
+
+      {/* Semantic search */}
+      {mode === "semantic" && (
+        <SemanticSearch onResults={setSemanticResults} />
+      )}
+
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {mode === "keyword" && <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
