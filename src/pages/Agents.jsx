@@ -17,6 +17,7 @@ const agents = [
   { key: "organic_chemistry_researcher", name: "Kekulé", domain: "Organic Chemistry", color: "#a855f7" },
   { key: "quantum_chemistry_researcher", name: "Bohr", domain: "Quantum Chemistry", color: "#ec4899" },
   { key: "stoichiometry_researcher", name: "Lavoisier", domain: "Stoichiometry", color: "#eab308" },
+  { key: "synthesis_agent", name: "Maxwell", domain: "Multi-Domain Synthesis", color: "#e2e8f0", isSynthesizer: true },
 ];
 
 export default function Agents() {
@@ -94,7 +95,7 @@ export default function Agents() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {agents.map(a => (
+          {agents.filter(a => !a.isSynthesizer).map(a => (
             <Card
               key={a.key}
               className="p-5 cursor-pointer hover:border-primary/30 transition-all bg-card/50"
@@ -102,7 +103,7 @@ export default function Agents() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold" style={{ backgroundColor: `${a.color}15`, color: a.color }}>
-                  {a.name.split(' ').pop()?.[0]}
+                  {a.name[0]}
                 </div>
                 <div>
                   <p className="text-sm font-semibold">{a.name}</p>
@@ -115,6 +116,32 @@ export default function Agents() {
             </Card>
           ))}
         </div>
+
+        {/* Maxwell — Synthesizer */}
+        {(() => {
+          const maxwell = agents.find(a => a.isSynthesizer);
+          return (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3">Master Synthesizer</p>
+              <Card
+                className="p-5 cursor-pointer transition-all bg-card/50 border-slate-500/30 hover:border-slate-400/50"
+                style={{ background: "linear-gradient(135deg, hsl(220 18% 8%), hsl(220 18% 10%))" }}
+                onClick={() => setSelectedAgent(maxwell)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold bg-gradient-to-br from-slate-400/20 to-slate-200/10 border border-slate-500/30 text-slate-200">
+                    M
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-100">Maxwell</p>
+                    <p className="text-xs text-muted-foreground">Multi-Domain Synthesis · Reads all 6 domain dictionaries</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs border-slate-500/40 text-slate-300">Synthesizer</Badge>
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
       </div>
     );
   }
