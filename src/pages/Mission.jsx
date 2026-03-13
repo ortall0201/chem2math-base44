@@ -153,13 +153,36 @@ export default function Mission() {
   const [prompt, setPrompt] = useState("");
   const [activeMission, setActiveMission] = useState(null);
   const [missionKey, setMissionKey] = useState(0);
+  const [activeMissionRecord, setActiveMissionRecord] = useState(null);
   const queryClient = useQueryClient();
 
-  const launch = () => {
+  const { data: pastMissions = [] } = useQuery({
+    queryKey: ["missions"],
+    queryFn: () => base44.entities.Mission.list("-created_date", 10),
+  });
+
+  const launch = async () => {
     if (!prompt.trim()) return;
+    const record = await base44.entities.Mission.create({
+      prompt: prompt.trim(),
+      agent_keys: agents.map(a => a.key),
+      status: "active",
+      entries_saved: 0,
+    });
+    setActiveMissionRecord(record);
     setActiveMission(prompt.trim());
     setMissionKey(k => k + 1);
-    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["dictionary"] }), 10000);
+    queryClient.invalidateQueries({ queryKey: ["missions"] });
+  };
+
+  const onAgentDone = async () => {
+    if (!activeMissionRecord) return;
+    const updated = await base44.entities.MathDictionary.filter({ created_date: { $gte: activeMissionRecord.created_date } });
+    await base44.entities.Mission.update(activeMissionRecord.id, {
+      status: "completed",
+      entries_saved: updated.length,
+    });
+    queryClient.invalidateQueries({ queryKey: ["missions"] });
   };
 
   return (
