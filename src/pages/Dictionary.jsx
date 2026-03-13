@@ -171,6 +171,11 @@ function DictEntryRow({ entry, score }) {
           <Badge variant="outline" className="text-xs" style={{ borderColor: `${color}40`, color }}>
             {domainLabels[entry.domain] || entry.domain}
           </Badge>
+          {score !== undefined && (
+            <Badge variant="outline" className="text-xs font-mono text-primary border-primary/30">
+              {(score * 100).toFixed(1)}% match
+            </Badge>
+          )}
           <Badge variant="outline" className="text-xs capitalize ml-auto">{entry.status || "draft"}</Badge>
           {entry.code_representation && (
             <Button
