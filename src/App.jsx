@@ -36,6 +36,7 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
+      <Route path="/landing" element={<Landing />} />
       <Route path="/" element={<Navigate to="/Dashboard" replace />} />
       <Route element={<AppLayout />}>
         <Route path="/Dashboard" element={<Dashboard />} />
