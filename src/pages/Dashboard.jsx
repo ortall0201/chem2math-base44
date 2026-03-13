@@ -45,8 +45,10 @@ export default function Dashboard() {
         <Button size="sm" variant={tab === "graph" ? "default" : "outline"} onClick={() => setTab("graph")}>Graph View</Button>
       </div>
 
+      {tab === "graph" && <GraphView entries={entries} />}
+
       {/* Stats */}
-      {isLoading ? (
+      {tab === "overview" && isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
