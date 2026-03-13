@@ -116,6 +116,7 @@ export default function Dictionary() {
 
 function DictEntryRow({ entry }) {
   const [open, setOpen] = useState(false);
+  const [playgroundOpen, setPlaygroundOpen] = useState(false);
   const color = domainColors[entry.domain] || "#0ea5e9";
 
   return (
@@ -131,6 +132,17 @@ function DictEntryRow({ entry }) {
             {domainLabels[entry.domain] || entry.domain}
           </Badge>
           <Badge variant="outline" className="text-xs capitalize ml-auto">{entry.status || "draft"}</Badge>
+          {entry.code_representation && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
+              onClick={e => { e.stopPropagation(); setOpen(true); setPlaygroundOpen(p => !p); }}
+            >
+              <Terminal className="w-3 h-3" />
+              {playgroundOpen ? "Close" : "Run"}
+            </Button>
+          )}
         </div>
 
         {open && (
@@ -146,8 +158,26 @@ function DictEntryRow({ entry }) {
             )}
             {entry.code_representation && (
               <div>
-                <span className="text-muted-foreground block mb-1">Code:</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-muted-foreground">Code:</span>
+                  {!playgroundOpen && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
+                      onClick={e => { e.stopPropagation(); setPlaygroundOpen(true); }}
+                    >
+                      <Terminal className="w-3 h-3" /> Open Playground
+                    </Button>
+                  )}
+                </div>
                 <pre className="font-mono bg-secondary/50 p-3 rounded-lg border border-border/30 overflow-x-auto">{entry.code_representation}</pre>
+                {playgroundOpen && (
+                  <CodePlayground
+                    initialCode={entry.code_representation}
+                    onClose={() => setPlaygroundOpen(false)}
+                  />
+                )}
               </div>
             )}
             {entry.natural_language && (
