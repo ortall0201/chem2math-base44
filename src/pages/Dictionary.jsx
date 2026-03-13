@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Search, BookOpen } from "lucide-react";
+import { Search, BookOpen, Terminal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import CodePlayground from "@/components/dictionary/CodePlayground";
 
 const domainLabels = {
   electrochemistry: "Electrochemistry",
