@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
+  const [tab, setTab] = useState("overview");
   const { data: domains = [], isLoading: domainsLoading } = useQuery({
     queryKey: ["domains"],
     queryFn: () => base44.entities.DomainDefinition.list(),
