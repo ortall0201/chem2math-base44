@@ -156,7 +156,12 @@ export default function Mission() {
   const [activeMission, setActiveMission] = useState(null);
   const [missionKey, setMissionKey] = useState(0);
   const [activeMissionRecord, setActiveMissionRecord] = useState(null);
+  const [agentResponses, setAgentResponses] = useState({});
   const queryClient = useQueryClient();
+
+  const handleAgentResponse = (agentKey, content) => {
+    setAgentResponses(prev => ({ ...prev, [agentKey]: content }));
+  };
 
   const { data: pastMissions = [] } = useQuery({
     queryKey: ["missions"],
