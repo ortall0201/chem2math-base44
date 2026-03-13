@@ -65,7 +65,7 @@ function AgentPanel({ agent, mission }) {
 
       await base44.agents.addMessage(conv, {
         role: "user",
-        content: mission
+        content: `${mission}\n\nIMPORTANT: For every concept, equation, or formalism you identify in your domain that is relevant to this question, you MUST save it to the MathDictionary using the create tool. Do not just respond with text — save each formalized entry to the dictionary as you go, then summarize what you saved.`
       });
     };
 
