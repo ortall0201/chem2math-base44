@@ -117,7 +117,7 @@ export default function Dictionary() {
             <SelectItem value="needs_revision">Needs Revision</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div>}
 
       {/* Results */}
       {isLoading ? (
