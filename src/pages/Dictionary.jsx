@@ -132,21 +132,23 @@ export default function Dictionary() {
         )
       )}
 
-      {(mode === "keyword") && isLoading ? (
-        <div className="text-center py-20 text-muted-foreground text-sm">Loading dictionary...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            {entries.length === 0 ? "Dictionary is empty. Use the domain agents to start building it." : "No entries match your filters."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(entry => (
-            <DictEntryRow key={entry.id} entry={entry} />
-          ))}
-        </div>
+      {mode === "keyword" && (
+        isLoading ? (
+          <div className="text-center py-20 text-muted-foreground text-sm">Loading dictionary...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {entries.length === 0 ? "Dictionary is empty. Use the domain agents to start building it." : "No entries match your filters."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(entry => (
+              <DictEntryRow key={entry.id} entry={entry} />
+            ))}
+          </div>
+        )
       )}
     </div>
   );
