@@ -29,7 +29,7 @@ function AgentPanel({ agent, mission }) {
   const [status, setStatus] = useState("idle"); // idle | working | done | error
   const [response, setResponse] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+  const doneTimerRef = React.useRef(null);
 
   useEffect(() => {
     if (!mission) return;
@@ -44,7 +44,6 @@ function AgentPanel({ agent, mission }) {
         agent_name: agent.key,
         metadata: { name: `Team Mission: ${mission.slice(0, 40)}...` }
       });
-      setConversationId(conv.id);
 
       unsubscribe = base44.agents.subscribeToConversation(conv.id, (data) => {
         const msgs = data.messages || [];
@@ -52,11 +51,15 @@ function AgentPanel({ agent, mission }) {
         if (lastAssistant?.content) {
           setResponse(lastAssistant.content);
         }
-        // Check if done (no tool calls running)
+
+        // Only mark done after 3s of silence (no new updates) AND last msg is assistant with content
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg?.role === "assistant" && lastMsg?.content) {
-          setStatus("done");
-          setExpanded(true);
+          if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+          doneTimerRef.current = setTimeout(() => {
+            setStatus("done");
+            setExpanded(true);
+          }, 3000);
         }
       });
 
@@ -68,7 +71,10 @@ function AgentPanel({ agent, mission }) {
 
     run().catch(() => setStatus("error"));
 
-    return () => { if (unsubscribe) unsubscribe(); };
+    return () => {
+      if (unsubscribe) unsubscribe();
+      if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+    };
   }, [mission]);
 
   return (
