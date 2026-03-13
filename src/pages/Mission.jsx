@@ -280,6 +280,7 @@ export default function Mission() {
                 <Badge variant="outline" className={`text-xs ${m.status === "completed" ? "text-green-500 border-green-500/30" : "text-yellow-500 border-yellow-500/30"}`}>
                   {m.status}
                 </Badge>
+                {m.status === "completed" && <MissionReportButton mission={m} />}
               </div>
             </div>
           ))}
