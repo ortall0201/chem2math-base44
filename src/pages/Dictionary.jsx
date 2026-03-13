@@ -154,7 +154,7 @@ export default function Dictionary() {
   );
 }
 
-function DictEntryRow({ entry }) {
+function DictEntryRow({ entry, score }) {
   const [open, setOpen] = useState(false);
   const [playgroundOpen, setPlaygroundOpen] = useState(false);
   const color = domainColors[entry.domain] || "#0ea5e9";
