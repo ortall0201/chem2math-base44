@@ -1,26 +1,24 @@
 import React, { useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Atom } from "lucide-react";
-import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 export default function Domains() {
   const urlParams = new URLSearchParams(window.location.search);
-  const initialDomain = urlParams.get("domain");
-  const [selectedDomain, setSelectedDomain] = useState(initialDomain);
+  const [selectedDomain, setSelectedDomain] = useState(urlParams.get("domain"));
 
   const { data: domains = [] } = useQuery({
     queryKey: ["domains"],
-    queryFn: () => base44.entities.DomainDefinition.list(),
+    queryFn: () => entities.DomainDefinition.list(),
   });
 
   const { data: entries = [] } = useQuery({
     queryKey: ["dictionary"],
-    queryFn: () => base44.entities.MathDictionary.list(),
+    queryFn: () => entities.MathDictionary.list(),
   });
 
   const domain = domains.find(d => d.domain_key === selectedDomain);
@@ -64,7 +62,6 @@ export default function Domains() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
       <div>
         <Button variant="ghost" size="sm" onClick={() => setSelectedDomain(null)} className="mb-4 text-muted-foreground">
           <ArrowLeft className="w-4 h-4 mr-1" /> All Domains
@@ -83,7 +80,6 @@ export default function Domains() {
         </div>
       </div>
 
-      {/* Math branches */}
       {domain.core_math_branches?.length > 0 && (
         <div>
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Core Math Branches</h3>
@@ -95,7 +91,6 @@ export default function Domains() {
         </div>
       )}
 
-      {/* Key equations */}
       {domain.key_equations?.length > 0 && (
         <div>
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Key Equations</h3>
@@ -109,7 +104,6 @@ export default function Domains() {
         </div>
       )}
 
-      {/* Dictionary entries */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="w-4 h-4 text-muted-foreground" />
@@ -119,9 +113,7 @@ export default function Domains() {
           <div className="rounded-xl border border-dashed border-border p-10 text-center">
             <Atom className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No entries yet for this domain.</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Use the domain's AI agent to start building the math dictionary.
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Use the domain's AI agent to start building the math dictionary.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -137,13 +129,9 @@ export default function Domains() {
 
 function EntryCard({ entry, color }) {
   const [expanded, setExpanded] = useState(false);
-
   return (
     <Card
-      className={cn(
-        "bg-card/50 border-border/50 overflow-hidden cursor-pointer transition-all",
-        expanded && "border-primary/20"
-      )}
+      className={cn("bg-card/50 border-border/50 overflow-hidden cursor-pointer transition-all", expanded && "border-primary/20")}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="p-5">
@@ -154,23 +142,18 @@ function EntryCard({ entry, color }) {
           </div>
           <Badge variant="outline" className="text-xs capitalize">{entry.status || 'draft'}</Badge>
         </div>
-
         {expanded && (
           <div className="mt-5 space-y-4 text-sm">
             {entry.math_formalism && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Math Formalism</p>
-                <div className="font-mono text-xs bg-secondary/30 rounded-lg p-3 border border-border/50 whitespace-pre-wrap">
-                  {entry.math_formalism}
-                </div>
+                <div className="font-mono text-xs bg-secondary/30 rounded-lg p-3 border border-border/50 whitespace-pre-wrap">{entry.math_formalism}</div>
               </div>
             )}
             {entry.code_representation && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Code</p>
-                <pre className="font-mono text-xs bg-secondary/50 rounded-lg p-3 border border-border/50 overflow-x-auto">
-                  {entry.code_representation}
-                </pre>
+                <pre className="font-mono text-xs bg-secondary/50 rounded-lg p-3 border border-border/50 overflow-x-auto">{entry.code_representation}</pre>
               </div>
             )}
             {entry.natural_language && (

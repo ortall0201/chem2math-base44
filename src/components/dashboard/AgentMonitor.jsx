@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Search, FlaskConical, Save, CheckCircle2, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,14 +46,12 @@ function AgentRow({ agent, elapsedMs, entriesCount, isDone }) {
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-border/20 last:border-0">
-      {/* Agent dot + name */}
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: agent.color }} />
       <div className="w-20 flex-shrink-0">
         <p className="text-xs font-semibold text-foreground">{agent.codename}</p>
         <p className="text-[10px] text-muted-foreground leading-tight">{agent.domain}</p>
       </div>
 
-      {/* Phase bar */}
       <div className="flex-1 flex gap-1 items-center">
         {["searching", "formalizing", "saving"].map(p => {
           const phases = ["searching", "formalizing", "saving"];
@@ -75,7 +73,6 @@ function AgentRow({ agent, elapsedMs, entriesCount, isDone }) {
         })}
       </div>
 
-      {/* Status badge */}
       <div className="flex items-center gap-1.5 w-24 justify-end">
         {Icon && (
           isActive ? (
@@ -89,7 +86,6 @@ function AgentRow({ agent, elapsedMs, entriesCount, isDone }) {
         </span>
       </div>
 
-      {/* Entry count */}
       <div className="w-8 text-right">
         {entriesCount > 0 && (
           <span className="text-[10px] font-mono" style={{ color: agent.color }}>+{entriesCount}</span>
@@ -101,23 +97,31 @@ function AgentRow({ agent, elapsedMs, entriesCount, isDone }) {
 
 export default function AgentMonitor() {
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [domainEntries, setDomainEntries] = useState({});
-  const [doneDomains, setDoneDomains] = useState(new Set());
   const timerRef = useRef(null);
 
   const { data: activeMissions = [] } = useQuery({
     queryKey: ["active-missions"],
-    queryFn: () => base44.entities.Mission.filter({ status: "active" }, "-created_date", 1),
+    queryFn: () => entities.Mission.filter({ status: "active" }, "-created_date", 1),
     refetchInterval: 5000,
+  });
+
+  const { data: completedMissions = [] } = useQuery({
+    queryKey: ["completed-missions"],
+    queryFn: () => entities.Mission.filter({ status: "completed" }, "-updated_date", 1),
+    refetchInterval: 5000,
+  });
+
+  const { data: allEntries = [] } = useQuery({
+    queryKey: ["dictionary"],
+    queryFn: () => entities.MathDictionary.list(),
+    refetchInterval: 3000,
   });
 
   const activeMission = activeMissions[0];
 
-  // Timer
   useEffect(() => {
     if (!activeMission) {
       setElapsedMs(0);
-      setDoneDomains(new Set());
       return;
     }
     const start = new Date(activeMission.created_date).getTime();
@@ -127,48 +131,24 @@ export default function AgentMonitor() {
     return () => clearInterval(timerRef.current);
   }, [activeMission?.id]);
 
-  // Subscribe to MathDictionary for live entry counts
-  useEffect(() => {
-    if (!activeMission) {
-      setDomainEntries({});
-      return;
-    }
-    const missionStart = new Date(activeMission.created_date).getTime();
-
-    const unsubscribe = base44.entities.MathDictionary.subscribe((event) => {
-      if (event.type === "create" && event.data) {
-        const entryTime = new Date(event.data.created_date).getTime();
-        if (entryTime >= missionStart) {
-          const domain = event.data.domain;
-          setDomainEntries(prev => ({ ...prev, [domain]: (prev[domain] || 0) + 1 }));
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [activeMission?.id]);
-
-  // Mark agent done when mission completes
-  const { data: completedMissions = [] } = useQuery({
-    queryKey: ["completed-missions"],
-    queryFn: () => base44.entities.Mission.filter({ status: "completed" }, "-updated_date", 1),
-    refetchInterval: 5000,
-  });
-
-  useEffect(() => {
-    if (completedMissions[0] && !activeMission) {
-      setDoneDomains(new Set(AGENTS.map(a => DOMAIN_FOR_AGENT[a.key])));
-    }
-  }, [completedMissions[0]?.id, activeMission]);
-
   if (!activeMission) return null;
 
+  const missionStart = new Date(activeMission.created_date).getTime();
+  const domainEntries = {};
+  allEntries.forEach(e => {
+    const t = new Date(e.created_date).getTime();
+    if (t >= missionStart && e.domain) {
+      domainEntries[e.domain] = (domainEntries[e.domain] || 0) + 1;
+    }
+  });
+
+  const isDone = !activeMission && !!completedMissions[0];
+  const doneDomains = isDone ? new Set(AGENTS.map(a => DOMAIN_FOR_AGENT[a.key])) : new Set();
   const doneCount = AGENTS.filter(a => doneDomains.has(DOMAIN_FOR_AGENT[a.key])).length;
   const totalEntries = Object.values(domainEntries).reduce((a, b) => a + b, 0);
 
   return (
     <div className="rounded-xl border border-border/50 bg-card/40 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card/60">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -186,12 +166,10 @@ export default function AgentMonitor() {
         </div>
       </div>
 
-      {/* Mission brief */}
       <div className="px-4 py-2 bg-secondary/10 border-b border-border/20">
         <p className="text-[10px] text-muted-foreground truncate">{activeMission.prompt}</p>
       </div>
 
-      {/* Agents */}
       <div className="px-4">
         {AGENTS.map(agent => (
           <AgentRow

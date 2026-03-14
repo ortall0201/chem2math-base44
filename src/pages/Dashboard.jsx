@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
 import { useQuery } from "@tanstack/react-query";
 import StatsRow from "../components/dashboard/StatsRow";
 import DomainCard from "../components/dashboard/DomainCard";
@@ -10,26 +10,25 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const [tab, setTab] = useState("overview");
+
   const { data: domains = [], isLoading: domainsLoading } = useQuery({
     queryKey: ["domains"],
-    queryFn: () => base44.entities.DomainDefinition.list(),
+    queryFn: () => entities.DomainDefinition.list(),
   });
 
   const { data: entries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ["dictionary"],
-    queryFn: () => base44.entities.MathDictionary.list(),
+    queryFn: () => entities.MathDictionary.list(),
   });
 
   const isLoading = domainsLoading || entriesLoading;
 
   const codeEntries = entries.filter(e => e.code_representation).length;
   const translatedEntries = entries.filter(e => e.natural_language && e.math_formalism && e.code_representation).length;
-
   const getEntryCount = (domainKey) => entries.filter(e => e.domain === domainKey).length;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
-      {/* Hero */}
       <div className="space-y-2">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           Chem<span className="text-primary">Lang</span>
@@ -40,7 +39,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Tab toggle */}
       <div className="flex gap-2">
         <Button size="sm" variant={tab === "overview" ? "default" : "outline"} onClick={() => setTab("overview")}>Overview</Button>
         <Button size="sm" variant={tab === "graph" ? "default" : "outline"} onClick={() => setTab("graph")}>Graph View</Button>
@@ -51,7 +49,6 @@ export default function Dashboard() {
       {tab === "graph" && <GraphView entries={entries} />}
 
       {tab === "overview" && <>
-        {/* Stats */}
         {isLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
@@ -65,7 +62,6 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Domains Grid */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Research Domains</h2>
           {isLoading ? (
@@ -81,7 +77,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent Entries */}
         {entries.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Recent Dictionary Entries</h2>

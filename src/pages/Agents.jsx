@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { localAgents } from "@/api/localAgentsClient";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -27,32 +27,24 @@ export default function Agents() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
 
   // Load conversations when agent changes
   useEffect(() => {
     if (!selectedAgent) return;
-    base44.agents.listConversations({ agent_name: selectedAgent.key })
+    localAgents.listConversations({ agent_name: selectedAgent.key })
       .then(setConversations)
       .catch(() => setConversations([]));
   }, [selectedAgent]);
 
-  // Subscribe to conversation updates
+  // Load messages when conversation changes
   useEffect(() => {
     if (!activeConvo) return;
-    const unsubscribe = base44.agents.subscribeToConversation(activeConvo.id, (data) => {
-      setMessages(data.messages || []);
-    });
-    return () => unsubscribe();
-  }, [activeConvo?.id]);
-
-  // Load conversation messages
-  useEffect(() => {
-    if (!activeConvo) return;
-    base44.agents.getConversation(activeConvo.id).then(conv => {
-      setMessages(conv.messages || []);
-    });
+    localAgents.getConversation(activeConvo.id)
+      .then(conv => setMessages(conv.messages || []))
+      .catch(() => setMessages([]));
   }, [activeConvo?.id]);
 
   // Auto scroll
@@ -63,26 +55,60 @@ export default function Agents() {
   }, [messages]);
 
   const createConversation = async () => {
-    const conv = await base44.agents.createConversation({
-      agent_name: selectedAgent.key,
-      metadata: { name: `${selectedAgent.domain} Research Session` }
-    });
-    setConversations(prev => [conv, ...prev]);
-    setActiveConvo(conv);
-    setMessages([]);
+    setError(null);
+    try {
+      const conv = await localAgents.createConversation({
+        agent_name: selectedAgent.key,
+        metadata: { name: `${selectedAgent.domain} Research Session` }
+      });
+      setConversations(prev => [conv, ...prev]);
+      setActiveConvo(conv);
+      setMessages([]);
+    } catch (e) {
+      setError("Cannot reach backend at http://localhost:8000 — is the server running?\n\ncd backend && uvicorn main:app --reload");
+    }
   };
 
   const sendMessage = async () => {
     if (!inputValue.trim() || sending || !activeConvo) return;
-    const msg = inputValue.trim();
+    const content = inputValue.trim();
     setInputValue("");
     setSending(true);
-    await base44.agents.addMessage(activeConvo, { role: "user", content: msg });
+
+    // Show user message immediately
+    setMessages(prev => [...prev, { role: "user", content }]);
+
+    let assistantText = "";
+
+    await localAgents.chat(activeConvo, content, {
+      onChunk: (chunk) => {
+        assistantText += chunk;
+        setMessages(prev => {
+          const msgs = [...prev];
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant") {
+            return [...msgs.slice(0, -1), { ...last, content: assistantText }];
+          }
+          return [...msgs, { role: "assistant", content: assistantText }];
+        });
+      },
+      onEntry: () => {
+        queryClient.invalidateQueries({ queryKey: ["dictionary"] });
+      },
+      onDone: (finalMessages) => {
+        setMessages(finalMessages.map(m => ({ role: m.role, content: m.content })));
+      },
+      onError: (err) => {
+        console.error("Agent error:", err);
+        setMessages(prev => [...prev, { role: "assistant", content: `Error: ${err}` }]);
+      },
+    });
+
     setSending(false);
-    queryClient.invalidateQueries({ queryKey: ["dictionary"] });
   };
 
-  // Agent selection view
+  // ── Agent selection view ───────────────────────────────────────────────────
+
   if (!selectedAgent) {
     return (
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
@@ -146,6 +172,8 @@ export default function Agents() {
     );
   }
 
+  // ── Chat view ──────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col md:flex-row h-screen md:h-auto">
       {/* Sidebar - conversations */}
@@ -165,6 +193,9 @@ export default function Agents() {
         <Button variant="outline" size="sm" className="w-full" onClick={createConversation}>
           <Plus className="w-3 h-3 mr-2" /> New Session
         </Button>
+        {error && (
+          <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-2 whitespace-pre-wrap">{error}</div>
+        )}
         <div className="space-y-1">
           {conversations.map(c => (
             <button

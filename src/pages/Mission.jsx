@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
+import { localAgents } from "@/api/localAgentsClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -30,54 +31,49 @@ function AgentPanel({ agent, mission, onDone, onResponse }) {
   const [status, setStatus] = useState("idle"); // idle | working | done | error
   const [response, setResponse] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const doneTimerRef = React.useRef(null);
 
   useEffect(() => {
     if (!mission) return;
-    let unsubscribe;
+    let cancelled = false;
 
     const run = async () => {
       setStatus("working");
       setResponse("");
       setExpanded(false);
 
-      const conv = await base44.agents.createConversation({
+      const conv = await localAgents.createConversation({
         agent_name: agent.key,
         metadata: { name: `Team Mission: ${mission.slice(0, 40)}...` }
       });
 
-      unsubscribe = base44.agents.subscribeToConversation(conv.id, (data) => {
-        const msgs = data.messages || [];
-        const lastAssistant = [...msgs].reverse().find(m => m.role === "assistant");
-        if (lastAssistant?.content) {
-          setResponse(lastAssistant.content);
-          if (onResponse) onResponse(agent.key, lastAssistant.content);
-        }
+      let accumulated = "";
 
-        // Only mark done after 3s of silence (no new updates) AND last msg is assistant with content
-        const lastMsg = msgs[msgs.length - 1];
-        if (lastMsg?.role === "assistant" && lastMsg?.content) {
-          if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
-          doneTimerRef.current = setTimeout(() => {
+      await localAgents.chat(conv,
+        `${mission}\n\nIMPORTANT: For every concept, equation, or formalism you identify in your domain that is relevant to this question, you MUST save it to the MathDictionary using the save_math_dictionary_entry tool. Do not just respond with text — save each formalized entry to the dictionary as you go, then summarize what you saved.`,
+        {
+          onChunk: (chunk) => {
+            if (cancelled) return;
+            accumulated += chunk;
+            setResponse(accumulated);
+            if (onResponse) onResponse(agent.key, accumulated);
+          },
+          onEntry: () => {},
+          onDone: () => {
+            if (cancelled) return;
             setStatus("done");
             setExpanded(true);
             if (onDone) onDone();
-          }, 3000);
+          },
+          onError: () => {
+            if (!cancelled) setStatus("error");
+          },
         }
-      });
-
-      await base44.agents.addMessage(conv, {
-        role: "user",
-        content: `${mission}\n\nIMPORTANT: For every concept, equation, or formalism you identify in your domain that is relevant to this question, you MUST save it to the MathDictionary using the create tool. Do not just respond with text — save each formalized entry to the dictionary as you go, then summarize what you saved.`
-      });
+      );
     };
 
-    run().catch(() => setStatus("error"));
+    run().catch(() => { if (!cancelled) setStatus("error"); });
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-      if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
-    };
+    return () => { cancelled = true; };
   }, [mission]);
 
   return (
@@ -165,12 +161,12 @@ export default function Mission() {
 
   const { data: pastMissions = [] } = useQuery({
     queryKey: ["missions"],
-    queryFn: () => base44.entities.Mission.list("-created_date", 10),
+    queryFn: () => entities.Mission.list("-created_date", 10),
   });
 
   const launch = async () => {
     if (!prompt.trim()) return;
-    const record = await base44.entities.Mission.create({
+    const record = await entities.Mission.create({
       prompt: prompt.trim(),
       agent_keys: agents.map(a => a.key),
       status: "active",
@@ -185,8 +181,8 @@ export default function Mission() {
 
   const onAgentDone = async () => {
     if (!activeMissionRecord) return;
-    const updated = await base44.entities.MathDictionary.filter({ created_date: { $gte: activeMissionRecord.created_date } });
-    await base44.entities.Mission.update(activeMissionRecord.id, {
+    const updated = await entities.MathDictionary.filter({ created_date: { $gte: activeMissionRecord.created_date } });
+    await entities.Mission.update(activeMissionRecord.id, {
       status: "completed",
       entries_saved: updated.length,
     });

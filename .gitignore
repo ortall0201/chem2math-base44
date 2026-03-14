@@ -1,8 +1,37 @@
-#env
+# ── Secrets & environment ──────────────────────────────────────────────────────
 .env
 .env.*
+*.local
+backend/.env
+# Allow example/template files — they contain only placeholders
+!.env.example
+!**/.env.example
 
-# Logs
+# ── Database ───────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+backend/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ── Node ───────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
 /logs
 *.log
 npm-debug.log*
@@ -11,20 +40,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# ── Editor ─────────────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-.env
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+ehthumbs.db
+Desktop.ini

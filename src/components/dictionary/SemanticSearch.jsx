@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { semanticSearch } from "@/api/entitiesClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Loader2, Sparkles, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -15,15 +14,6 @@ const domainLabels = {
   stoichiometry: "Stoichiometry",
 };
 
-const domainColors = {
-  electrochemistry: "#0ea5e9",
-  thermochemistry: "#f97316",
-  kinetics: "#22c55e",
-  organic_chemistry: "#a855f7",
-  quantum_chemistry: "#ec4899",
-  stoichiometry: "#eab308",
-};
-
 export default function SemanticSearch({ onResults }) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("all");
@@ -34,15 +24,11 @@ export default function SemanticSearch({ onResults }) {
   const search = async () => {
     if (!query.trim()) return;
     setLoading(true);
-    const resp = await base44.functions.invoke("semanticSearch", { query: query.trim(), top_k: 12, domain });
+    const data = await semanticSearch(query.trim(), { top_k: 12, domain });
     setLoading(false);
     setSearched(true);
-    setTotalSearched(resp.data.total_searched || 0);
-    onResults(resp.data.results || []);
-  };
-
-  const handleKey = (e) => {
-    if (e.key === "Enter") search();
+    setTotalSearched(data.total_searched || 0);
+    onResults(data.results || []);
   };
 
   return (
@@ -59,18 +45,14 @@ export default function SemanticSearch({ onResults }) {
             className="pl-9 bg-card/50"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            onKeyDown={handleKey}
+            onKeyDown={e => e.key === "Enter" && search()}
           />
         </div>
         <Select value={domain} onValueChange={setDomain}>
-          <SelectTrigger className="w-44 bg-card/50">
-            <SelectValue placeholder="All Domains" />
-          </SelectTrigger>
+          <SelectTrigger className="w-44 bg-card/50"><SelectValue placeholder="All Domains" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Domains</SelectItem>
-            {Object.entries(domainLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
+            {Object.entries(domainLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button onClick={search} disabled={!query.trim() || loading} className="gap-2">

@@ -1,0 +1,320 @@
+import React, { useState, useRef, useEffect } from "react";
+import { localAgents } from "@/api/localAgentsClient";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Loader2, Send, MessageSquareMore, ChevronDown, ChevronUp, Sparkles, BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { cn } from "@/lib/utils";
+
+const AGENT_META = {
+  electrochemistry_researcher: { codename: "Faraday", domain: "Electrochemistry", color: "#0ea5e9" },
+  thermochemistry_researcher:  { codename: "Carnot",  domain: "Thermochemistry",  color: "#f97316" },
+  kinetics_researcher:         { codename: "Arrhenius", domain: "Kinetics",       color: "#22c55e" },
+  organic_chemistry_researcher:{ codename: "Kekulé",  domain: "Organic Chemistry",color: "#a855f7" },
+  quantum_chemistry_researcher:{ codename: "Bohr",    domain: "Quantum Chemistry",color: "#ec4899" },
+  stoichiometry_researcher:    { codename: "Lavoisier",domain: "Stoichiometry",   color: "#eab308" },
+  synthesis_agent:             { codename: "Maxwell", domain: "Multi-Domain Synthesis", color: "#94a3b8" },
+};
+
+const STARTER_PROMPTS = [
+  "What is 'equilibrium' and how is it expressed mathematically across all chemistry domains?",
+  "How does energy appear, transform, and conserve across all six chemistry domains?",
+  "What is the role of exponential functions in chemistry — and why does nature prefer them?",
+  "Find all the places where a differential equation governs a chemistry concept.",
+];
+
+const ROUND_META = {
+  1: { label: "Round 1 — Domain Experts", description: "Each agent independently formalizes the concept in their domain.", color: "#0ea5e9" },
+  2: { label: "Round 2 — Cross-Domain Debate", description: "Each agent reads all colleagues and finds mathematical bridges.", color: "#a855f7" },
+  3: { label: "Round 3 — Maxwell Synthesizes", description: "Maxwell reads the full debate and produces a unified mathematical framework.", color: "#94a3b8" },
+};
+
+function AgentCard({ agentKey, agentData, isActive }) {
+  const [expanded, setExpanded] = useState(true);
+  const meta = AGENT_META[agentKey] || { codename: agentKey, domain: "", color: "#64748b" };
+  const isMaxwell = agentKey === "synthesis_agent";
+
+  useEffect(() => {
+    if (agentData.done && !isMaxwell) setExpanded(false);
+  }, [agentData.done]);
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden transition-all duration-300",
+        isActive && "border-primary/40",
+        agentData.done && !isMaxwell && "border-border/30",
+        isMaxwell && "border-2"
+      )}
+      style={isMaxwell ? { borderColor: `${meta.color}40` } : {}}
+    >
+      <div
+        className={cn("flex items-center justify-between p-3 cursor-pointer", isMaxwell ? "bg-secondary/30" : "bg-card/40")}
+        onClick={() => agentData.text && setExpanded(e => !e)}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+            style={{ backgroundColor: `${meta.color}20`, color: meta.color }}
+          >
+            {meta.codename[0]}
+          </div>
+          <div>
+            <p className="text-xs font-semibold">{meta.codename}</p>
+            <p className="text-[10px] text-muted-foreground">{meta.domain}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {agentData.entries?.length > 0 && (
+            <Badge variant="outline" className="text-[10px] font-mono" style={{ color: meta.color, borderColor: `${meta.color}40` }}>
+              +{agentData.entries.length} saved
+            </Badge>
+          )}
+          {isActive && (
+            <span className="flex items-center gap-1 text-[10px]" style={{ color: meta.color }}>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Thinking...
+            </span>
+          )}
+          {agentData.done && (
+            <span className="text-[10px] text-muted-foreground">Done</span>
+          )}
+          {agentData.text && (expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />)}
+        </div>
+      </div>
+
+      {expanded && agentData.text && (
+        <div className="px-4 pb-4 pt-2 border-t border-border/20">
+          <div className="text-xs leading-relaxed text-secondary-foreground prose prose-sm prose-invert max-w-none">
+            <ReactMarkdown
+              components={{
+                code: ({ inline, children }) =>
+                  inline
+                    ? <code className="px-1 py-0.5 rounded bg-secondary text-secondary-foreground font-mono text-xs">{children}</code>
+                    : <pre className="bg-secondary/50 rounded-lg p-3 border border-border/30 overflow-x-auto font-mono text-xs mt-2"><code>{children}</code></pre>,
+                p: ({ children }) => <p className="my-1.5">{children}</p>,
+                h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-1" style={{ color: meta.color }}>{children}</h3>,
+                ul: ({ children }) => <ul className="ml-4 list-disc space-y-0.5">{children}</ul>,
+              }}
+            >
+              {agentData.text}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {isActive && !agentData.text && (
+        <div className="px-4 pb-3 pt-2 border-t border-border/20">
+          <div className="flex gap-1">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: meta.color, animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RoundSection({ roundData }) {
+  const meta = ROUND_META[roundData.round] || {};
+  const agentKeys = Object.keys(roundData.agents);
+  const isMaxwellRound = roundData.round === 3;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border/20" />
+        <div className="text-center">
+          <p className="text-xs font-semibold" style={{ color: meta.color }}>{meta.label}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{meta.description}</p>
+        </div>
+        <div className="h-px flex-1 bg-border/20" />
+      </div>
+
+      <div className={cn(isMaxwellRound ? "space-y-3" : "grid grid-cols-1 md:grid-cols-2 gap-3")}>
+        {agentKeys.map(agentKey => (
+          <AgentCard
+            key={agentKey}
+            agentKey={agentKey}
+            agentData={roundData.agents[agentKey]}
+            isActive={!roundData.agents[agentKey].done}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function TeamCommunication() {
+  const [prompt, setPrompt] = useState("");
+  const [running, setRunning] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [rounds, setRounds] = useState([]);
+  const [error, setError] = useState(null);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    if (running) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [rounds]);
+
+  const updateAgent = (agentKey, updater) => {
+    setRounds(prev => {
+      const next = [...prev];
+      for (let i = next.length - 1; i >= 0; i--) {
+        if (agentKey in next[i].agents) {
+          next[i] = { ...next[i], agents: { ...next[i].agents, [agentKey]: updater(next[i].agents[agentKey]) } };
+          break;
+        }
+      }
+      return next;
+    });
+  };
+
+  const launch = async () => {
+    if (!prompt.trim() || running) return;
+    setRunning(true);
+    setFinished(false);
+    setRounds([]);
+    setError(null);
+
+    try {
+      await localAgents.teamCommunication(prompt.trim(), {
+        onRoundStart: ({ round, label }) => {
+          setRounds(prev => [...prev, { round, label, agents: {} }]);
+        },
+        onAgentStart: ({ agent_key, codename }) => {
+          setRounds(prev => {
+            const next = [...prev];
+            const last = { ...next[next.length - 1] };
+            last.agents = { ...last.agents, [agent_key]: { codename, text: "", done: false, entries: [] } };
+            next[next.length - 1] = last;
+            return next;
+          });
+        },
+        onAgentChunk: ({ agent_key, content }) => {
+          updateAgent(agent_key, a => ({ ...a, text: a.text + content }));
+        },
+        onAgentDone: ({ agent_key }) => {
+          updateAgent(agent_key, a => ({ ...a, done: true }));
+        },
+        onToolCall: ({ agent_key, entry }) => {
+          updateAgent(agent_key, a => ({ ...a, entries: [...a.entries, entry] }));
+        },
+        onDone: () => {
+          setRunning(false);
+          setFinished(true);
+        },
+        onError: (msg) => {
+          setError(msg);
+          setRunning(false);
+        },
+      });
+    } catch (e) {
+      setError(e.message);
+      setRunning(false);
+    }
+  };
+
+  const totalEntries = rounds.reduce((sum, r) =>
+    sum + Object.values(r.agents).reduce((s, a) => s + (a.entries?.length || 0), 0), 0
+  );
+
+  return (
+    <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <MessageSquareMore className="w-6 h-6 text-primary" />
+          Team Communication
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          A structured 3-round debate. Each agent first defines the concept in their domain, then reads all colleagues and argues about mathematical connections, and finally Maxwell synthesizes a unified framework from the full conversation.
+        </p>
+        <div className="flex gap-2 flex-wrap pt-1">
+          {Object.values(ROUND_META).map(r => (
+            <div key={r.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: r.color }} />
+              {r.label.split(" — ")[1]}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Prompt input */}
+      <div className="space-y-3">
+        <Textarea
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          placeholder="Enter a research question for the team..."
+          className="bg-card/50 border-border/50 min-h-24 resize-none font-mono text-sm"
+          disabled={running}
+        />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {STARTER_PROMPTS.slice(0, 2).map((p, i) => (
+              <button
+                key={i}
+                onClick={() => setPrompt(p)}
+                disabled={running}
+                className="text-xs px-3 py-1.5 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-40"
+              >
+                {p.slice(0, 45)}...
+              </button>
+            ))}
+          </div>
+          <Button onClick={launch} disabled={!prompt.trim() || running} className="gap-2">
+            {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {running ? "Debating..." : "Launch Debate"}
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-3">{error}</div>
+      )}
+
+      {/* Live stats bar */}
+      {running && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-primary/20 bg-primary/5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+          <span className="text-xs font-medium text-primary">Debate in progress</span>
+          {totalEntries > 0 && (
+            <span className="text-xs text-muted-foreground font-mono ml-auto">+{totalEntries} entries saved to dictionary</span>
+          )}
+        </div>
+      )}
+
+      {/* Rounds */}
+      {rounds.map(round => (
+        <RoundSection key={round.round} roundData={round} />
+      ))}
+
+      {/* Done summary */}
+      {finished && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-green-500/20 bg-green-500/5">
+          <Sparkles className="w-4 h-4 text-green-400" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-green-400">Debate complete</p>
+            <p className="text-xs text-muted-foreground">{totalEntries} new entries saved to the Math Dictionary</p>
+          </div>
+          <BookOpen className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
+
+      {!running && rounds.length === 0 && (
+        <div className="text-center py-16 border border-dashed border-border/30 rounded-xl">
+          <MessageSquareMore className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="text-sm text-muted-foreground">Launch a debate to watch the agents argue their way to unified math.</p>
+        </div>
+      )}
+
+      <div ref={bottomRef} />
+    </div>
+  );
+}

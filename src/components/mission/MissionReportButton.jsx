@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, FileText, Loader2 } from "lucide-react";
@@ -16,7 +16,7 @@ const agents = [
 
 async function fetchReportData(mission, agentResponses) {
   // Fetch dictionary entries created around the time of this mission
-  const allEntries = await base44.entities.MathDictionary.list("-created_date", 200);
+  const allEntries = await entities.MathDictionary.list("-created_date", 200);
   const missionDate = new Date(mission.created_date).getTime();
   const windowMs = 2 * 60 * 60 * 1000; // 2 hour window
   const entries = allEntries.filter(e => {

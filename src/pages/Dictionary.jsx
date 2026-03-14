@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/api/entitiesClient";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,12 +32,12 @@ export default function Dictionary() {
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [mode, setMode] = useState("keyword"); // "keyword" | "semantic"
+  const [mode, setMode] = useState("keyword");
   const [semanticResults, setSemanticResults] = useState(null);
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["dictionary"],
-    queryFn: () => base44.entities.MathDictionary.list(),
+    queryFn: () => entities.MathDictionary.list(),
   });
 
   const filtered = useMemo(() => {
@@ -60,56 +60,32 @@ export default function Dictionary() {
         <Badge variant="outline" className="ml-2 font-mono">{entries.length} entries</Badge>
       </div>
 
-      {/* Mode toggle */}
       <div className="flex gap-2">
-        <Button
-          size="sm" variant={mode === "keyword" ? "default" : "outline"}
-          onClick={() => { setMode("keyword"); setSemanticResults(null); }}
-          className="gap-1.5"
-        >
+        <Button size="sm" variant={mode === "keyword" ? "default" : "outline"} onClick={() => { setMode("keyword"); setSemanticResults(null); }} className="gap-1.5">
           <Search className="w-3.5 h-3.5" /> Keyword
         </Button>
-        <Button
-          size="sm" variant={mode === "semantic" ? "default" : "outline"}
-          onClick={() => setMode("semantic")}
-          className="gap-1.5"
-        >
+        <Button size="sm" variant={mode === "semantic" ? "default" : "outline"} onClick={() => setMode("semantic")} className="gap-1.5">
           <Sparkles className="w-3.5 h-3.5" /> Semantic
         </Button>
       </div>
 
-      {/* Semantic search */}
-      {mode === "semantic" && (
-        <SemanticSearch onResults={setSemanticResults} />
-      )}
+      {mode === "semantic" && <SemanticSearch onResults={setSemanticResults} />}
 
-      {/* Filters */}
       {mode === "keyword" && (
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search concepts, equations, code..."
-              className="pl-9 bg-card/50"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <Input placeholder="Search concepts, equations, code..." className="pl-9 bg-card/50" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <Select value={domainFilter} onValueChange={setDomainFilter}>
-            <SelectTrigger className="w-48 bg-card/50">
-              <SelectValue placeholder="All Domains" />
-            </SelectTrigger>
+            <SelectTrigger className="w-48 bg-card/50"><SelectValue placeholder="All Domains" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Domains</SelectItem>
-              {Object.entries(domainLabels).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
+              {Object.entries(domainLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 bg-card/50">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
+            <SelectTrigger className="w-40 bg-card/50"><SelectValue placeholder="All Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
@@ -121,36 +97,18 @@ export default function Dictionary() {
         </div>
       )}
 
-      {/* Results */}
       {mode === "semantic" && semanticResults !== null && (
-        semanticResults.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground text-sm">No matching entries found.</div>
-        ) : (
-          <div className="space-y-3">
-            {semanticResults.map(entry => (
-              <DictEntryRow key={entry.id} entry={entry} score={entry.score} />
-            ))}
-          </div>
-        )
+        semanticResults.length === 0
+          ? <div className="text-center py-20 text-muted-foreground text-sm">No matching entries found.</div>
+          : <div className="space-y-3">{semanticResults.map(entry => <DictEntryRow key={entry.id} entry={entry} score={entry.score} />)}</div>
       )}
 
       {mode === "keyword" && (
-        isLoading ? (
-          <div className="text-center py-20 text-muted-foreground text-sm">Loading dictionary...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {entries.length === 0 ? "Dictionary is empty. Use the domain agents to start building it." : "No entries match your filters."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map(entry => (
-              <DictEntryRow key={entry.id} entry={entry} />
-            ))}
-          </div>
-        )
+        isLoading
+          ? <div className="text-center py-20 text-muted-foreground text-sm">Loading dictionary...</div>
+          : filtered.length === 0
+            ? <div className="text-center py-20"><BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3" /><p className="text-sm text-muted-foreground">{entries.length === 0 ? "Dictionary is empty. Use the domain agents to start building it." : "No entries match your filters."}</p></div>
+            : <div className="space-y-3">{filtered.map(entry => <DictEntryRow key={entry.id} entry={entry} />)}</div>
       )}
     </div>
   );
@@ -162,41 +120,24 @@ function DictEntryRow({ entry, score }) {
   const color = domainColors[entry.domain] || "#0ea5e9";
 
   return (
-    <Card
-      className="bg-card/40 border-border/40 hover:border-border transition-colors cursor-pointer"
-      onClick={() => setOpen(!open)}
-    >
+    <Card className="bg-card/40 border-border/40 hover:border-border transition-colors cursor-pointer" onClick={() => setOpen(!open)}>
       <div className="p-4">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           <span className="font-medium text-sm">{entry.concept_name}</span>
-          <Badge variant="outline" className="text-xs" style={{ borderColor: `${color}40`, color }}>
-            {domainLabels[entry.domain] || entry.domain}
-          </Badge>
-          {score !== undefined && (
-            <Badge variant="outline" className="text-xs font-mono text-primary border-primary/30">
-              {(score * 100).toFixed(1)}% match
-            </Badge>
-          )}
+          <Badge variant="outline" className="text-xs" style={{ borderColor: `${color}40`, color }}>{domainLabels[entry.domain] || entry.domain}</Badge>
+          {score !== undefined && <Badge variant="outline" className="text-xs font-mono text-primary border-primary/30">{(score * 100).toFixed(1)}% match</Badge>}
           <Badge variant="outline" className="text-xs capitalize ml-auto">{entry.status || "draft"}</Badge>
           {entry.code_representation && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
-              onClick={e => { e.stopPropagation(); setOpen(true); setPlaygroundOpen(p => !p); }}
-            >
-              <Terminal className="w-3 h-3" />
-              {playgroundOpen ? "Close" : "Run"}
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
+              onClick={e => { e.stopPropagation(); setOpen(true); setPlaygroundOpen(p => !p); }}>
+              <Terminal className="w-3 h-3" />{playgroundOpen ? "Close" : "Run"}
             </Button>
           )}
         </div>
-
         {open && (
           <div className="mt-4 space-y-3 text-xs border-t border-border/30 pt-4">
-            {entry.chemistry_notation && (
-              <div><span className="text-muted-foreground">Chemistry: </span><span className="font-mono">{entry.chemistry_notation}</span></div>
-            )}
+            {entry.chemistry_notation && <div><span className="text-muted-foreground">Chemistry: </span><span className="font-mono">{entry.chemistry_notation}</span></div>}
             {entry.math_formalism && (
               <div>
                 <span className="text-muted-foreground block mb-1">Math Formalism:</span>
@@ -208,31 +149,18 @@ function DictEntryRow({ entry, score }) {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-muted-foreground">Code:</span>
                   {!playgroundOpen && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-5 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
-                      onClick={e => { e.stopPropagation(); setPlaygroundOpen(true); }}
-                    >
+                    <Button size="sm" variant="ghost" className="h-5 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
+                      onClick={e => { e.stopPropagation(); setPlaygroundOpen(true); }}>
                       <Terminal className="w-3 h-3" /> Open Playground
                     </Button>
                   )}
                 </div>
                 <pre className="font-mono bg-secondary/50 p-3 rounded-lg border border-border/30 overflow-x-auto">{entry.code_representation}</pre>
-                {playgroundOpen && (
-                  <CodePlayground
-                    initialCode={entry.code_representation}
-                    onClose={() => setPlaygroundOpen(false)}
-                  />
-                )}
+                {playgroundOpen && <CodePlayground initialCode={entry.code_representation} onClose={() => setPlaygroundOpen(false)} />}
               </div>
             )}
-            {entry.natural_language && (
-              <div><span className="text-muted-foreground">Natural Language: </span><span className="text-secondary-foreground">{entry.natural_language}</span></div>
-            )}
-            {entry.prediction_potential && (
-              <div><span className="text-muted-foreground">Prediction: </span><span className="text-chart-2">{entry.prediction_potential}</span></div>
-            )}
+            {entry.natural_language && <div><span className="text-muted-foreground">Natural Language: </span><span className="text-secondary-foreground">{entry.natural_language}</span></div>}
+            {entry.prediction_potential && <div><span className="text-muted-foreground">Prediction: </span><span className="text-chart-2">{entry.prediction_potential}</span></div>}
           </div>
         )}
       </div>
