@@ -492,6 +492,92 @@ def _team_communication_stream(prompt: str, mission_id: str):
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
 
+# ── Math Dictionary Analysis (Turing) ────────────────────────────────────────
+
+@app.post("/analyze-dictionary")
+def analyze_dictionary_route():
+    entries = list_entities("MathDictionary")
+    if not entries:
+        raise HTTPException(400, "Math Dictionary is empty — run some agent sessions first to build it up.")
+    return StreamingResponse(
+        _run_dictionary_analysis(entries),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _cosine(a, b):
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(x * x for x in b) ** 0.5
+    return dot / (na * nb) if na * nb else 0.0
+
+
+def _run_dictionary_analysis(entries: list):
+    try:
+        # Group by domain
+        by_domain = {}
+        for e in entries:
+            d = e.get("domain", "unknown")
+            by_domain.setdefault(d, []).append(e)
+
+        # Find top cross-domain similar pairs from embeddings
+        embedded = [e for e in entries if e.get("embedding")][:120]  # cap at 120 for speed
+        cross_pairs = []
+        for i, a in enumerate(embedded):
+            for b in embedded[i + 1:]:
+                if a.get("domain") != b.get("domain"):
+                    sim = _cosine(a["embedding"], b["embedding"])
+                    if sim > 0.72:
+                        cross_pairs.append({
+                            "concept_a": a.get("concept_name", ""),
+                            "domain_a": a.get("domain", ""),
+                            "concept_b": b.get("concept_name", ""),
+                            "domain_b": b.get("domain", ""),
+                            "similarity": round(sim, 3),
+                        })
+        cross_pairs.sort(key=lambda x: x["similarity"], reverse=True)
+
+        # Emit stats so frontend can show them before agent starts
+        domain_counts = {d: len(v) for d, v in by_domain.items()}
+        embedded_count = len([e for e in entries if e.get("embedding")])
+        yield f"data: {json.dumps({'type': 'stats', 'total_entries': len(entries), 'by_domain': domain_counts, 'embedded': embedded_count, 'cross_domain_pairs_found': len(cross_pairs)})}\n\n"
+
+        # Build the structured context for Turing
+        lines = [f"MATH DICTIONARY ANALYSIS INPUT\nTotal entries: {len(entries)} | Embedded: {embedded_count}\n"]
+
+        for domain, domain_entries in by_domain.items():
+            lines.append(f"\n=== {domain.upper()} ({len(domain_entries)} entries) ===")
+            for e in domain_entries[:25]:  # max 25 per domain in context
+                lines.append(f"  - {e.get('concept_name', 'N/A')}: {e.get('math_formalism', '')[:120]}")
+
+        if cross_pairs:
+            lines.append(f"\n=== TOP CROSS-DOMAIN SEMANTIC PAIRS (similarity > 0.72) ===")
+            for p in cross_pairs[:30]:
+                lines.append(
+                    f"  [{p['similarity']}] {p['concept_a']} ({p['domain_a']}) ↔ {p['concept_b']} ({p['domain_b']})"
+                )
+
+        context = "\n".join(lines)
+
+        yield f"data: {json.dumps({'type': 'agent_start', 'agent_key': 'data_science_agent', 'codename': 'Turing'})}\n\n"
+
+        messages = [
+            {"role": "system", "content": AGENT_CONFIGS["data_science_agent"]["system_prompt"]},
+            {"role": "user", "content": context},
+        ]
+        for evt, data in _run_agent_turn(messages, use_tools=False):
+            if evt == "chunk":
+                yield f"data: {json.dumps({'type': 'agent_chunk', 'content': data})}\n\n"
+            elif evt == "done":
+                yield f"data: {json.dumps({'type': 'agent_done'})}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    except Exception as e:
+        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+
 # ── Streaming agent loop ──────────────────────────────────────────────────────
 
 def _agent_stream(conv_id: str, messages: list):

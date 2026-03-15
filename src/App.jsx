@@ -11,6 +11,7 @@ import Dictionary from './pages/Dictionary';
 import Agents from './pages/Agents';
 import Mission from './pages/Mission';
 import TeamCommunication from './pages/TeamCommunication';
+import MathAnalysis from './pages/MathAnalysis';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/Agents" element={<Agents />} />
             <Route path="/Mission" element={<Mission />} />
             <Route path="/TeamCommunication" element={<TeamCommunication />} />
+            <Route path="/MathAnalysis" element={<MathAnalysis />} />
           </Route>
           <Route path="*" element={<PageNotFound />} />
         </Routes>

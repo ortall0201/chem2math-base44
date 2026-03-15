@@ -19,7 +19,18 @@ const AGENT_META = {
 };
 
 const STARTER_PROMPTS = [
-  "A shared exhaust header mixes gases from multiple industrial machines. Can mixing cause reactions, deposits, or corrosion?",
+  `A shared exhaust header mixes gases from multiple industrial machines. Can mixing cause reactions, deposits, or corrosion?
+
+EXAMPLE STREAM CONDITIONS — use these exact values for all calculations:
+• Components: CO2 (60 mol%), SO2 (5 mol%), H2O (15 mol%), N2 (18 mol%), HCl (2 mol%)
+• Stream temperature: 320 °C
+• Stream pressure: 1.2 bar (absolute)
+• Pipe wall (surface) temperature: 180 °C
+• Pipe material: Carbon steel ASTM A106 Grade B
+• Flow rate: ~8,000 kg/h
+• Residence time in header: ~3 seconds
+
+Compute concrete dew point estimates, identify which components condense at 180 °C, assess SO2 + H2O → H2SO4 acid formation risk, and determine corrosion rate for carbon steel under these exact conditions. Output actual HIGH/MEDIUM/LOW risk scores — not generic frameworks.`,
   "What is 'equilibrium' and how is it expressed mathematically across all chemistry domains?",
   "How does energy appear, transform, and conserve across all six chemistry domains?",
   "Find all the places where a differential equation governs a chemistry concept.",

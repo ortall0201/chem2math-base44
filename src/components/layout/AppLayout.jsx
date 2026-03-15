@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BookOpen, FlaskConical, Bot, Menu, X, Zap, MessageSquareMore } from "lucide-react";
+import { LayoutDashboard, BookOpen, FlaskConical, Bot, Menu, X, Zap, MessageSquareMore, Telescope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const navItems = [
   { path: "/Agents", label: "Agents", icon: Bot },
   { path: "/Mission", label: "Team Mission", icon: Zap },
   { path: "/TeamCommunication", label: "Team Communication", icon: MessageSquareMore },
+  { path: "/MathAnalysis", label: "Math Analysis", icon: Telescope },
 ];
 
 export default function AppLayout() {

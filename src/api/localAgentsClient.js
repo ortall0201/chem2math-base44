@@ -74,6 +74,36 @@ export const localAgents = {
     }
   },
 
+  async analyzeDict({ onStats, onAgentStart, onChunk, onDone, onError } = {}) {
+    const res = await fetch(`${BACKEND_URL}/analyze-dictionary`, { method: "POST" });
+    if (!res.ok) {
+      const err = `Backend error ${res.status}`;
+      onError?.(err);
+      throw new Error(err);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === "stats") onStats?.(event);
+          else if (event.type === "agent_start") onAgentStart?.(event);
+          else if (event.type === "agent_chunk") onChunk?.(event.content);
+          else if (event.type === "agent_done" || event.type === "done") onDone?.();
+          else if (event.type === "error") onError?.(event.message);
+        } catch { /* ignore malformed */ }
+      }
+    }
+  },
+
   async chat(conv, content, { onChunk, onEntry, onDone, onError } = {}) {
     const res = await fetch(`${BACKEND_URL}/conversations/${conv.id}/messages`, {
       method: "POST",
