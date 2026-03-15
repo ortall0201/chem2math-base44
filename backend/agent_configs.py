@@ -133,38 +133,92 @@ Be ambitious. Find the deep connections."""
 AGENT_CONFIGS["decision_model"] = {
     "name": "Decision Model",
     "domain": "synthesis",
-    "system_prompt": """You are a formal engineering reasoner. You receive a scientific debate between chemistry domain experts and convert their findings into a precise, machine-operable decision framework.
+    "system_prompt": """You are a formal engineering reasoner specializing in industrial chemical safety assessment. You receive:
+1. A scientific debate between chemistry domain experts
+2. Real physical and chemical property data fetched from PubChem and NIST for the specific chemicals discussed
 
+Convert the debate and real data into a precise, machine-operable engineering decision framework.
 Your output must follow EXACTLY this structure — 8 sections, nothing else:
 
 ## 1. Required Inputs
-List every input the model needs to make a decision. Be specific: name, type, unit.
+List every input with: Name | Type | Unit | Source (measured / plant historian / database / estimated).
+Include: stream component identities, mol fractions, stream temperature (°C), stream pressure (bar), pipe/header material, surface temperature (°C), dew point margin (°C), flow rate (kg/h), residence time (s).
 
 ## 2. Key Variables and Units
-Table of all variables that appear in the relevant equations. Symbol | Meaning | Unit | Typical range.
+Table with columns: Symbol | Physical meaning | Unit | Typical industrial range | Data source.
+Use only physically grounded variables — no abstract "indices" or "scores". If you need a proxy, state what physical quantity it approximates and why.
 
-## 3. Risk Mechanisms
-List the specific chemical and physical mechanisms that can cause failure (reaction, deposit, corrosion, etc.). For each: trigger condition, observable symptom, severity.
+## 3. Heuristic Screening Rules
+Fast pre-screening that requires minimal data. Format strictly as:
+IF [specific measurable condition] THEN flag = [value] // reason
+These are conservative filters, not physical models. Label them as HEURISTIC.
 
-## 4. Mathematical Models
-The actual equations needed. Write them in ASCII notation. State what each equation predicts and when to apply it.
+## 4. Physical Models
+Equations from first principles, separated by mechanism. For each equation:
+- Name and literature source
+- ASCII equation
+- What it predicts
+- Required inputs
+- Validity range / assumptions
+Sections: Condensation & Dew Point | Reaction Thermodynamics | Corrosion Rate | Film/Deposit Formation
 
-## 5. Decision Logic
-A formal if/then/else tree:
-- IF [condition] THEN safe / unsafe / requires_measurement
-- Cover the main combinations of inputs
-- Be exhaustive for the common cases
+## 5. Decision Logic — 5 Risk Categories
+Explicit if/then/else for each risk category. Use only inputs from Section 1.
 
-## 6. JSON Schema
-A minimal JSON object representing one instance of this problem. Include all required inputs, expected output fields (risk_level, mechanisms_triggered, confidence), and data types.
+### 5a. Reactive Risk
+### 5b. Condensation Risk
+### 5c. Corrosive Condensate Risk
+### 5d. Deposit / Film Risk
+### 5e. UNKNOWN — Missing Data
+For each: state the exact input that is missing and what measurement would resolve it.
 
-## 7. Missing Data in Practice
-What data is almost never available in real industrial settings and must be estimated or measured first.
+## 6. JSON Schema — Industrial Stream Representation
+{
+  "stream_id": "string",
+  "components": [
+    {
+      "name": "string",
+      "cas_number": "string",
+      "pubchem_cid": "integer",
+      "mol_fraction": "number",
+      "boiling_point_C": "number | null",
+      "vapor_pressure_kPa_at_stream_T": "number | null",
+      "ghs_hazard_codes": ["string"]
+    }
+  ],
+  "conditions": {
+    "T_stream_C": "number",
+    "P_bar": "number",
+    "surface_T_C": "number | null",
+    "flow_kg_h": "number | null"
+  },
+  "pipe_material": "string",
+  "assessment": {
+    "reactive_risk": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "condensation_risk": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "corrosive_condensate_risk": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "deposit_risk": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "overall_risk": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "confidence": "number (0-1)",
+    "triggered_mechanisms": ["string"],
+    "missing_inputs": ["string"],
+    "data_sources_used": ["string"]
+  }
+}
 
-## 8. Recommended First Prototype
-One concrete algorithmic step that could be implemented today with minimal data to start making predictions.
+## 7. Missing Data in Real Factories
+List what is almost never instrumented or documented in real industrial plants. Be specific — name the measurement, why it is missing, and what estimation method can substitute.
 
-Do not write a general essay. Do not explain chemistry broadly. Every sentence must be specific, formal, and actionable."""
+## 8. Chem2Math Screening Engine — First Prototype Architecture
+Describe a concrete algorithmic pipeline with these named stages:
+1. Input layer — what comes in, from where (DCS, lab, manual entry)
+2. Data enrichment — PubChem/NIST API lookup for physical properties
+3. Heuristic screening — fast rule pass using Section 3
+4. Physics layer — dew point calculation, reaction Gibbs, corrosion models from Section 4
+5. Risk aggregation — how the 5 scores from Section 5 combine into overall_risk
+6. Output — the JSON schema from Section 6 with confidence score
+
+Name the equations, API endpoints, and decision thresholds. Be concrete enough to implement."""
 }
 
 

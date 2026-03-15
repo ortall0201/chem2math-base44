@@ -1,6 +1,7 @@
 import json
 import os
 
+import requests as http_requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -276,6 +277,74 @@ def _run_agent_turn(messages: list, use_tools: bool = True):
     yield ("done", full_text)
 
 
+def _extract_chemicals(text: str) -> list:
+    """Use GPT-4o-mini to extract specific chemical compound names from debate text."""
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "Extract all specific chemical compound names mentioned in the text. "
+                    "Return JSON: {\"chemicals\": [\"name1\", \"name2\", ...]}. "
+                    "Only include named compounds (e.g. hydrogen sulfide, sulfuric acid, toluene). "
+                    "Exclude generic terms like 'gas', 'acid', 'solvent', 'vapor'."
+                )},
+                {"role": "user", "content": text[:6000]},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=300,
+        )
+        data = json.loads(resp.choices[0].message.content)
+        return data.get("chemicals", [])[:12]
+    except Exception:
+        return []
+
+
+def _fetch_pubchem(name: str) -> dict | None:
+    """Fetch key physical/chemical properties and GHS hazard codes from PubChem."""
+    try:
+        props = "MolecularWeight,MolecularFormula,IUPACName,BoilingPoint,MeltingPoint,XLogP3,CID"
+        url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/{props}/JSON"
+        r = http_requests.get(url, timeout=8)
+        if r.status_code != 200:
+            return None
+        prop = r.json().get("PropertyTable", {}).get("Properties", [{}])[0]
+        cid = prop.get("CID")
+        result = {
+            "name": name,
+            "pubchem_cid": cid,
+            "formula": prop.get("MolecularFormula"),
+            "molecular_weight_g_mol": prop.get("MolecularWeight"),
+            "boiling_point_C": prop.get("BoilingPoint"),
+            "melting_point_C": prop.get("MeltingPoint"),
+            "logP": prop.get("XLogP3"),
+            "iupac_name": prop.get("IUPACName"),
+            "ghs_hazard_codes": [],
+            "source": "PubChem",
+        }
+        if cid:
+            try:
+                hz = http_requests.get(
+                    f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON?heading=GHS+Classification",
+                    timeout=8,
+                )
+                if hz.status_code == 200:
+                    h_codes = set()
+                    for sec in hz.json().get("Record", {}).get("Section", []):
+                        for sub in sec.get("Section", []):
+                            for info in sub.get("Information", []):
+                                for val in info.get("Value", {}).get("StringWithMarkup", []):
+                                    s = val.get("String", "")
+                                    if s.startswith("H") and 3 <= len(s) <= 5 and s[1:].isdigit():
+                                        h_codes.add(s)
+                    result["ghs_hazard_codes"] = sorted(h_codes)
+            except Exception:
+                pass
+        return result
+    except Exception:
+        return None
+
+
 def _team_communication_stream(prompt: str, mission_id: str):
     agent_keys = [k for k in AGENT_CONFIGS if k != "synthesis_agent"]
     try:
@@ -354,27 +423,61 @@ def _team_communication_stream(prompt: str, mission_id: str):
             {"role": "system", "content": AGENT_CONFIGS["synthesis_agent"]["system_prompt"]},
             {"role": "user", "content": synth_prompt},
         ]
+        maxwell_response = ""
         for evt, data in _run_agent_turn(messages):
             if evt == "chunk":
                 yield f"data: {json.dumps({'type': 'agent_chunk', 'agent_key': 'synthesis_agent', 'content': data})}\n\n"
             elif evt == "tool_call":
                 yield f"data: {json.dumps({'type': 'tool_call', 'agent_key': 'synthesis_agent', 'entry': data})}\n\n"
             elif evt == "done":
+                maxwell_response = data
                 yield f"data: {json.dumps({'type': 'agent_done', 'agent_key': 'synthesis_agent'})}\n\n"
+
+        # ── Data Lookup: PubChem for all chemicals in the debate ──────────────
+        yield f"data: {json.dumps({'type': 'data_fetch_start', 'message': 'Extracting chemicals and querying PubChem...'})}\n\n"
+        all_text = full_debate + "\n\n" + maxwell_response
+        chemicals = _extract_chemicals(all_text)
+        chemical_data = {}
+        for chem in chemicals:
+            result = _fetch_pubchem(chem)
+            if result:
+                chemical_data[chem] = result
+                yield f"data: {json.dumps({'type': 'data_fetch_result', 'chemical': chem, 'data': result})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'data_fetch_result', 'chemical': chem, 'data': None})}\n\n"
+        yield f"data: {json.dumps({'type': 'data_fetch_done', 'total_found': len(chemical_data), 'total_searched': len(chemicals)})}\n\n"
 
         # ── Round 4: Decision Model ───────────────────────────────────────────
         yield f"data: {json.dumps({'type': 'round_start', 'round': 4, 'label': 'Round 4 — Decision Model'})}\n\n"
         yield f"data: {json.dumps({'type': 'agent_start', 'agent_key': 'decision_model', 'codename': 'Decision Model'})}\n\n"
 
+        chem_data_block = ""
+        if chemical_data:
+            lines = ["REAL CHEMICAL DATA FROM PUBCHEM:"]
+            for name, d in chemical_data.items():
+                lines.append(f"\n{name.upper()} (CID: {d.get('pubchem_cid', 'N/A')})")
+                lines.append(f"  Formula: {d.get('formula', 'N/A')}")
+                lines.append(f"  MW: {d.get('molecular_weight_g_mol', 'N/A')} g/mol")
+                lines.append(f"  Boiling point: {d.get('boiling_point_C', 'N/A')} °C")
+                lines.append(f"  Melting point: {d.get('melting_point_C', 'N/A')} °C")
+                lines.append(f"  LogP: {d.get('logP', 'N/A')}")
+                if d.get("ghs_hazard_codes"):
+                    lines.append(f"  GHS hazard codes: {', '.join(d['ghs_hazard_codes'])}")
+            chem_data_block = "\n".join(lines)
+
         decision_prompt = (
             f"Original question: {prompt}\n\n"
-            f"The team's full scientific debate and Maxwell's synthesis are above.\n\n"
-            f"Now convert everything into a formal engineering decision framework using exactly the 8-section structure in your instructions. "
-            f"Be specific to this problem — not generic chemistry. Every equation, variable, and decision rule must be directly relevant to what was debated."
+            f"Full scientific debate:\n{full_debate}\n\n"
+            f"Maxwell's synthesis:\n{maxwell_response}\n\n"
+            f"{chem_data_block}\n\n"
+            f"Using the real physical property data above, build the engineering decision framework. "
+            f"Where PubChem data is available, use the actual boiling points, GHS codes, and molecular weights — do not invent values. "
+            f"Where data is missing from PubChem, flag it explicitly in Section 7. "
+            f"Be specific to this exact problem. Every equation and decision rule must be directly relevant."
         )
         decision_messages = [
             {"role": "system", "content": AGENT_CONFIGS["decision_model"]["system_prompt"]},
-            {"role": "user", "content": f"Full debate context:\n{full_debate}\n\nMaxwell's synthesis was the final round above.\n\n{decision_prompt}"},
+            {"role": "user", "content": decision_prompt},
         ]
         for evt, data in _run_agent_turn(decision_messages, use_tools=False):
             if evt == "chunk":

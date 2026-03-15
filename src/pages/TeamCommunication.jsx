@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send, MessageSquareMore, ChevronDown, ChevronUp, Sparkles, BookOpen, BrainCircuit } from "lucide-react";
+import { Loader2, Send, MessageSquareMore, ChevronDown, ChevronUp, Sparkles, BookOpen, BrainCircuit, Database, CheckCircle2, XCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +116,56 @@ function AgentCard({ agentKey, agentData, isActive }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function DataFetchPanel({ dataFetch }) {
+  if (!dataFetch) return null;
+  return (
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-blue-500/10">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-blue-400" />
+          <span className="text-xs font-semibold text-blue-400">Live Data Lookup — PubChem</span>
+        </div>
+        {dataFetch.fetching && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+        {dataFetch.done && (
+          <span className="text-[10px] text-blue-400 font-mono">
+            {dataFetch.total_found}/{dataFetch.total_searched} compounds found
+          </span>
+        )}
+      </div>
+      <div className="px-4 py-3 flex flex-wrap gap-2">
+        {dataFetch.chemicals.map(({ name, data }) => (
+          <div
+            key={name}
+            className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg border"
+            style={{
+              borderColor: data ? "#3b82f620" : "#ef444420",
+              backgroundColor: data ? "#3b82f608" : "#ef444408",
+            }}
+          >
+            {data ? (
+              <CheckCircle2 className="w-3 h-3 text-blue-400 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
+            )}
+            <span className={data ? "text-blue-300" : "text-red-400"}>{name}</span>
+            {data?.boiling_point_C != null && (
+              <span className="text-muted-foreground">bp {data.boiling_point_C}°C</span>
+            )}
+            {data?.ghs_hazard_codes?.length > 0 && (
+              <span className="text-orange-400">{data.ghs_hazard_codes.slice(0, 3).join(" ")}</span>
+            )}
+          </div>
+        ))}
+        {dataFetch.fetching && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Loader2 className="w-2.5 h-2.5 animate-spin" /> querying...
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -243,6 +293,7 @@ export default function TeamCommunication() {
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [rounds, setRounds] = useState([]);
+  const [dataFetch, setDataFetch] = useState(null); // {fetching, chemicals: [{name, data}], done}
   const [error, setError] = useState(null);
   const bottomRef = useRef(null);
 
@@ -268,13 +319,11 @@ export default function TeamCommunication() {
     setRunning(true);
     setFinished(false);
     setRounds([]);
+    setDataFetch(null);
     setError(null);
 
     try {
       await localAgents.teamCommunication(prompt.trim(), {
-        onRoundStart: ({ round, label }) => {
-          setRounds(prev => [...prev, { round, label, agents: {} }]);
-        },
         onAgentStart: ({ agent_key, codename }) => {
           setRounds(prev => {
             const next = [...prev];
@@ -292,6 +341,21 @@ export default function TeamCommunication() {
         },
         onToolCall: ({ agent_key, entry }) => {
           updateAgent(agent_key, a => ({ ...a, entries: [...a.entries, entry] }));
+        },
+        onRoundStart: ({ round, label }) => {
+          setRounds(prev => [...prev, { round, label, agents: {} }]);
+        },
+        onDataFetchStart: () => {
+          setDataFetch({ fetching: true, chemicals: [], done: false });
+        },
+        onDataFetchResult: ({ chemical, data }) => {
+          setDataFetch(prev => ({
+            ...prev,
+            chemicals: [...(prev?.chemicals || []), { name: chemical, data }],
+          }));
+        },
+        onDataFetchDone: ({ total_found, total_searched }) => {
+          setDataFetch(prev => ({ ...prev, fetching: false, done: true, total_found, total_searched }));
         },
         onDone: () => {
           setRunning(false);
@@ -382,8 +446,13 @@ export default function TeamCommunication() {
 
       {/* Rounds */}
       {rounds.map(round => (
-        <RoundSection key={round.round} roundData={round} />
+        <React.Fragment key={round.round}>
+          {round.round === 4 && <DataFetchPanel dataFetch={dataFetch} />}
+          <RoundSection roundData={round} />
+        </React.Fragment>
       ))}
+      {/* Show data fetch panel between Round 3 and Round 4 while fetching */}
+      {dataFetch && !rounds.find(r => r.round === 4) && <DataFetchPanel dataFetch={dataFetch} />}
 
       {/* Done summary */}
       {finished && (

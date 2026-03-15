@@ -35,7 +35,7 @@ export const localAgents = {
    *   onDone(msgs)    — called with the full messages array when streaming ends
    *   onError(msg)    — called if something goes wrong
    */
-  async teamCommunication(prompt, { onRoundStart, onAgentStart, onAgentChunk, onAgentDone, onToolCall, onDone, onError } = {}) {
+  async teamCommunication(prompt, { onRoundStart, onAgentStart, onAgentChunk, onAgentDone, onToolCall, onDataFetchStart, onDataFetchResult, onDataFetchDone, onDone, onError } = {}) {
     const res = await fetch(`${BACKEND_URL}/team-communication`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,6 +64,9 @@ export const localAgents = {
           else if (event.type === "agent_chunk") onAgentChunk?.(event);
           else if (event.type === "agent_done") onAgentDone?.(event);
           else if (event.type === "tool_call") onToolCall?.(event);
+          else if (event.type === "data_fetch_start") onDataFetchStart?.(event);
+          else if (event.type === "data_fetch_result") onDataFetchResult?.(event);
+          else if (event.type === "data_fetch_done") onDataFetchDone?.(event);
           else if (event.type === "done") onDone?.(event);
           else if (event.type === "error") onError?.(event.message);
         } catch { /* ignore malformed */ }
