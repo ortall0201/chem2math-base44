@@ -36,7 +36,7 @@ The frontend talks directly to a local FastAPI backend at `http://127.0.0.1:8000
 | **Dictionary** | Full dictionary with keyword search and semantic (embedding-based) search |
 | **Agents** | Chat 1-on-1 with any domain agent in a persistent research session |
 | **Team Mission** | Broadcast one question to all 6 agents simultaneously — each saves entries independently |
-| **Team Communication** | 3-round structured debate: agents formalize → debate cross-domain connections → Maxwell synthesizes a unified framework |
+| **Team Communication** | 4-round structured debate: agents formalize → debate cross-domain → Maxwell synthesizes → PubChem data lookup → Decision Model produces engineering framework |
 
 ---
 
@@ -58,13 +58,43 @@ Each agent has a system prompt that instructs it to call `save_math_dictionary_e
 
 ## Team Communication — how it works
 
-Unlike Team Mission (parallel independent agents), Team Communication runs a structured 3-round debate:
+Unlike Team Mission (parallel independent agents), Team Communication runs a structured 4-round debate that ends with an engineering decision framework grounded in real chemical data.
 
-1. **Round 1 — Domain Experts**: Each of the 6 agents independently formalizes the concept in their domain
-2. **Round 2 — Cross-Domain Debate**: Each agent reads all 5 colleagues' Round 1 responses and argues about mathematical connections — where are the equations secretly the same thing?
-3. **Round 3 — Maxwell Synthesizes**: Maxwell reads the full debate and produces a unified mathematical framework, saving cross-domain unifications to the dictionary
+### The four rounds
 
-This is where the interesting science happens — Faraday notices his Nernst equation and Carnot's ΔG are the same statement, Arrhenius sees his K_eq is the Q they're both using, and so on.
+1. **Round 1 — Domain Experts**
+   Each of the 6 agents independently formalizes the concept in their domain, calling `save_math_dictionary_entry` for every equation, formalism, or concept they identify. Entries are saved to the dictionary in real time.
+
+2. **Round 2 — Cross-Domain Debate**
+   Each agent reads all 5 colleagues' Round 1 responses and argues about mathematical connections — where are the equations secretly the same thing? This is where Faraday notices his Nernst equation and Carnot's ΔG are the same thermodynamic statement, and Arrhenius sees his K_eq is the Q they're both using.
+
+3. **Round 3 — Maxwell Synthesizes**
+   Maxwell reads the full Round 2 debate and produces a unified mathematical framework. It looks for equations that appear identically or analogously across multiple domains — universal conservation laws, shared differential equation forms, and how energy appears and transforms across all six domains.
+
+4. **PubChem Live Data Lookup** _(between rounds 3 and 4)_
+   GPT-4o-mini extracts every chemical species named in the debate. For each chemical, a live query is sent to the [PubChem REST API](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest) to retrieve:
+   - Molecular weight, boiling point, molecular formula
+   - LogP (lipophilicity proxy)
+   - GHS hazard classification codes
+   This real data is injected into the Decision Model's prompt so its risk assessment is grounded in actual physical properties, not estimates.
+
+5. **Round 4 — Engineering Decision Model**
+   A specialized agent converts the debate + real PubChem data into a machine-operable engineering decision framework. The output is structured into exactly 8 sections:
+
+   | Section | Content |
+   |---------|---------|
+   | 1. Required Inputs | Every input parameter: name, type, unit, and data source |
+   | 2. Key Variables | Symbol table with physical meaning, unit, and industrial range |
+   | 3. Heuristic Screening Rules | Fast `IF [condition] THEN flag` pre-screening rules (labeled HEURISTIC) |
+   | 4. Physical Models | First-principles equations for condensation, reaction thermodynamics, corrosion, and film/deposit formation |
+   | 5. Decision Logic — 5 Risk Categories | Explicit if/then/else for: reactive risk, condensation risk, corrosive condensate risk, deposit/film risk, and unknown/missing data |
+   | 6. JSON Schema | Machine-readable industrial stream representation with GHS codes, vapor pressures, and confidence score |
+   | 7. Missing Data in Real Factories | What is almost never instrumented and how to estimate it |
+   | 8. Chem2Math Screening Engine | Concrete algorithmic pipeline: input layer → data enrichment → heuristic screening → physics layer → risk aggregation → output |
+
+### Why this matters
+
+The Decision Model deliberately separates **heuristic screening** (fast, conservative, minimal data) from **physical models** (first-principles equations with explicit validity ranges). This matches how real process engineers think: check the fast rules first, then run the physics if needed. The JSON schema in Section 6 is designed to be directly importable into a process safety system.
 
 ---
 
@@ -118,10 +148,12 @@ Open [http://localhost:5173](http://localhost:5173)
 
 All AI calls go through your OpenAI account.
 
-| Model | Per chat message | Per Team Mission | Per Team Communication |
-|-------|-----------------|-----------------|----------------------|
-| gpt-4o | ~$0.01–0.03 | ~$0.30–0.90 | ~$0.50–1.50 |
-| gpt-4o-mini | ~$0.001 | ~$0.03–0.09 | ~$0.05–0.15 |
+| Model | Per chat message | Per Team Mission | Per Team Communication (4 rounds) |
+|-------|-----------------|-----------------|----------------------------------|
+| gpt-4o | ~$0.01–0.03 | ~$0.30–0.90 | ~$0.80–2.00 |
+| gpt-4o-mini | ~$0.001 | ~$0.03–0.09 | ~$0.08–0.20 |
+
+> Team Communication costs more than Team Mission because it runs 4 rounds (vs 1), each agent in Round 2 receives all Round 1 responses as context, and Round 4's Decision Model has a long system prompt and receives the full debate plus real chemical data.
 
 To switch models, change one line in `backend/main.py`:
 
@@ -155,7 +187,7 @@ The 6 chemistry domains are seeded automatically on first startup.
 | GET | `/conversations` | List conversations |
 | GET | `/conversations/{id}` | Get conversation with messages |
 | POST | `/conversations/{id}/messages` | Send message, stream SSE response |
-| POST | `/team-communication` | Launch 3-round agent debate, stream SSE |
+| POST | `/team-communication` | Launch 4-round agent debate with PubChem data lookup, stream SSE |
 | GET | `/entities/{name}` | List entities (MathDictionary, DomainDefinition, Mission) |
 | POST | `/entities/{name}` | Create entity |
 | PUT | `/entities/{name}/{id}` | Update entity |

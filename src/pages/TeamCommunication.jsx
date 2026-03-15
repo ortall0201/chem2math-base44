@@ -385,7 +385,7 @@ export default function TeamCommunication() {
           Team Communication
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
-          A structured 3-round debate. Each agent first defines the concept in their domain, then reads all colleagues and argues about mathematical connections, and finally Maxwell synthesizes a unified framework from the full conversation.
+          A structured 4-round debate ending in an engineering decision framework. Round 1: each domain expert formalizes the concept independently. Round 2: agents read each other and argue about mathematical bridges. Round 3: Maxwell synthesizes a unified framework. Between Round 3 and Round 4, live chemical data is fetched from PubChem (boiling points, GHS hazard codes, vapor pressures). Round 4: an engineering Decision Model converts the debate + real data into 5 risk categories, heuristic screening rules, physical models, and a machine-operable JSON schema.
         </p>
         <div className="flex gap-2 flex-wrap pt-1">
           {Object.values(ROUND_META).map(r => (

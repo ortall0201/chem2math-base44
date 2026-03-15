@@ -10,6 +10,8 @@ Contributions are welcome at every level — from fixing a typo to adding an ent
 
 - **Add a new chemistry domain** — photochemistry, nuclear chemistry, polymer chemistry, etc.
 - **Improve agent system prompts** — make agents more rigorous, more domain-specific, or better at finding cross-domain connections
+- **Improve the Decision Model** — extend the 5-risk-category framework, add new physical models, or improve the JSON schema
+- **Add new external data sources** — NIST WebBook, ChemSpider, CAS registry, or DECHEMA corrosion data
 - **Improve the UI** — better visualization of the math dictionary, graph views, export formats
 - **Add tests** — automate the TTD checklist
 - **Fix bugs** — check open issues
@@ -129,6 +131,69 @@ All system prompts live in `backend/agent_configs.py`. Good prompts:
 - Explicitly instruct the agent to call `save_math_dictionary_entry` for every concept
 - Give examples of the notation style (ASCII math preferred: `E = E0 - (R*T)/(n*F) * ln(Q)`)
 - Specify what a "good response" looks like (e.g. "saves 3-8 entries")
+
+---
+
+## How to improve the Decision Model
+
+The Decision Model prompt lives in `AGENT_CONFIGS["decision_model"]` in `backend/agent_configs.py`. It instructs the agent to output exactly 8 sections covering required inputs, key variables, heuristic rules, physical models, 5-risk-category decision logic, a JSON schema, missing-data guidance, and a pipeline architecture.
+
+### The 5 risk categories
+
+The Decision Model scores five independent risk dimensions:
+
+| Category | What it assesses |
+|----------|-----------------|
+| **Reactive Risk** | Can mixed components react chemically at stream conditions? |
+| **Condensation Risk** | Will any component condense at the surface temperature? |
+| **Corrosive Condensate Risk** | If condensation occurs, is the liquid corrosive to the pipe material? |
+| **Deposit / Film Risk** | Can solid deposits, polymers, or fouling films form? |
+| **UNKNOWN** | Which risks cannot be assessed due to missing inputs, and what measurement would resolve them? |
+
+Each category outputs `HIGH | MEDIUM | LOW | UNKNOWN`.
+
+### Key design rules for the Decision Model prompt
+
+- **Separate heuristics from physics.** Section 3 is fast `IF/THEN` rules that need minimal data (conservative, labeled `HEURISTIC`). Section 4 is first-principles equations with explicit validity ranges. Never mix them.
+- **Physically grounded variables only.** No abstract "indices" or "scores" — every variable must map to a real measurable quantity with units.
+- **Real data injection.** The Decision Model receives the output of the PubChem lookup (boiling points, GHS codes, molecular weights) injected into its prompt. The prompt should use these explicitly — reference `boiling_point_C` and `ghs_hazard_codes` from the data block.
+- **Section 6 JSON schema.** The schema includes `cas_number`, `pubchem_cid`, `ghs_hazard_codes`, and `vapor_pressure_kPa_at_stream_T` per component — these must stay in sync with the PubChem fetch in `_fetch_pubchem()` in `backend/main.py`.
+
+### Adding a new risk category
+
+1. Add the category to Section 5 of the Decision Model system prompt in `agent_configs.py`
+2. Add the corresponding field to the JSON schema in Section 6 (e.g. `"explosion_risk": "HIGH | MEDIUM | LOW | UNKNOWN"`)
+3. Update the `DecisionModelCard` component in `src/pages/TeamCommunication.jsx` to color-code the new category heading
+4. Update the JSON schema in `src/pages/TeamCommunication.jsx` if it renders the schema inline
+
+---
+
+## How to add a new external data source
+
+The PubChem lookup runs in `_fetch_pubchem(name)` in `backend/main.py`. The full data-fetch flow is in `_team_communication_stream()` — it calls `_extract_chemicals()` (GPT-4o-mini) then loops over chemicals to call `_fetch_pubchem()`.
+
+### Adding NIST WebBook data
+
+NIST WebBook has an API for thermodynamic data (Antoine coefficients, heat of vaporization, heat capacity). Example endpoint:
+
+```
+https://webbook.nist.gov/cgi/cbook.cgi?Name={chemical}&Units=SI&cTG=on&json
+```
+
+To add it:
+
+1. Write a `_fetch_nist(name)` function in `backend/main.py` that calls the NIST endpoint using `http_requests.get()`
+2. Call it from `_team_communication_stream()` after `_fetch_pubchem()`, in the same data-fetch loop
+3. Emit the result as a `data_fetch_result` SSE event with a `source: "NIST"` field
+4. Handle the new event in `DataFetchPanel` in `src/pages/TeamCommunication.jsx`
+5. Inject the NIST data into the Decision Model prompt alongside the PubChem block
+
+### Adding a new data source — general checklist
+
+- Use `requests` (synchronous) inside `_team_communication_stream()`, which is a synchronous generator — do **not** use `httpx` async here
+- Always emit `data_fetch_start` before the request and `data_fetch_result` after, so the UI shows live progress
+- Handle HTTP errors gracefully — a missing chemical should emit `{ "found": false }`, not crash the stream
+- Document the new endpoint in this file and in `README.md`
 
 ---
 
