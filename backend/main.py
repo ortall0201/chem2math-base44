@@ -217,19 +217,17 @@ def team_communication_route(req: TeamCommunicationRequest):
     )
 
 
-def _run_agent_turn(messages: list):
+def _run_agent_turn(messages: list, use_tools: bool = True):
     """Run one LLM turn with tool loop. Yields ("chunk", text) | ("tool_call", entry) | ("done", full_text)."""
     full_text = ""
     while True:
         accumulated_text = ""
         tool_calls_raw = []
-        stream = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            tools=[SAVE_ENTRY_TOOL],
-            tool_choice="auto",
-            stream=True,
-        )
+        kwargs = {"model": "gpt-4o", "messages": messages, "stream": True}
+        if use_tools:
+            kwargs["tools"] = [SAVE_ENTRY_TOOL]
+            kwargs["tool_choice"] = "auto"
+        stream = client.chat.completions.create(**kwargs)
         for chunk in stream:
             if not chunk.choices:
                 continue
@@ -363,6 +361,26 @@ def _team_communication_stream(prompt: str, mission_id: str):
                 yield f"data: {json.dumps({'type': 'tool_call', 'agent_key': 'synthesis_agent', 'entry': data})}\n\n"
             elif evt == "done":
                 yield f"data: {json.dumps({'type': 'agent_done', 'agent_key': 'synthesis_agent'})}\n\n"
+
+        # ── Round 4: Decision Model ───────────────────────────────────────────
+        yield f"data: {json.dumps({'type': 'round_start', 'round': 4, 'label': 'Round 4 — Decision Model'})}\n\n"
+        yield f"data: {json.dumps({'type': 'agent_start', 'agent_key': 'decision_model', 'codename': 'Decision Model'})}\n\n"
+
+        decision_prompt = (
+            f"Original question: {prompt}\n\n"
+            f"The team's full scientific debate and Maxwell's synthesis are above.\n\n"
+            f"Now convert everything into a formal engineering decision framework using exactly the 8-section structure in your instructions. "
+            f"Be specific to this problem — not generic chemistry. Every equation, variable, and decision rule must be directly relevant to what was debated."
+        )
+        decision_messages = [
+            {"role": "system", "content": AGENT_CONFIGS["decision_model"]["system_prompt"]},
+            {"role": "user", "content": f"Full debate context:\n{full_debate}\n\nMaxwell's synthesis was the final round above.\n\n{decision_prompt}"},
+        ]
+        for evt, data in _run_agent_turn(decision_messages, use_tools=False):
+            if evt == "chunk":
+                yield f"data: {json.dumps({'type': 'agent_chunk', 'agent_key': 'decision_model', 'content': data})}\n\n"
+            elif evt == "done":
+                yield f"data: {json.dumps({'type': 'agent_done', 'agent_key': 'decision_model'})}\n\n"
 
         update_entity("Mission", mission_id, {"status": "completed"})
         yield f"data: {json.dumps({'type': 'done', 'mission_id': mission_id})}\n\n"
