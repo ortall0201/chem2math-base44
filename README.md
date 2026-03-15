@@ -1,6 +1,6 @@
 # ChemLang — Chemistry → Math → Code
 
-A multilingual dictionary that translates chemistry concepts into mathematical formalisms, computable JavaScript code, and natural language — domain by domain, powered by AI agents.
+A multilingual dictionary that translates chemistry concepts into rigorous mathematical formalisms, runnable Python 3 code, and natural language — domain by domain, powered by AI agents.
 
 ---
 
@@ -9,10 +9,12 @@ A multilingual dictionary that translates chemistry concepts into mathematical f
 ChemLang uses specialized AI agents to formalize chemistry into three representations:
 
 - **Math formalism** — rigorous ASCII notation (e.g. `E = E0 - (R*T)/(n*F) * ln(Q)`)
-- **Code** — runnable JavaScript implementation of the formula
+- **Code** — runnable Python 3 implementation of the formula (numpy / scipy / sympy)
 - **Natural language** — plain English explanation of what it means and when to use it
 
-Every entry is saved to a shared **Math Dictionary** that grows over time. The goal is to build a complete, computable mathematical language for chemistry — domain by domain.
+Every entry is saved to a shared **Math Dictionary** that grows over time and is automatically embedded for semantic search. The long-term goal is to build a formal mathematical grammar for chemistry that can train an NLP layer — so that a process engineer can type a question in plain English and get back the correct mathematical model.
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for full system diagrams.
 
 ---
 
@@ -21,9 +23,10 @@ Every entry is saved to a shared **Math Dictionary** that grows over time. The g
 ```
 frontend/          React + Vite + TailwindCSS + shadcn/ui
 backend/           FastAPI (Python) + SQLite + OpenAI API
+external/          PubChem REST API (live chemical property data)
 ```
 
-The frontend talks directly to a local FastAPI backend at `http://127.0.0.1:8000`. No external BaaS — everything runs on your machine. The only external call is to the OpenAI API.
+The frontend talks directly to a local FastAPI backend at `http://127.0.0.1:8000`. No external BaaS — everything runs on your machine. The only external calls are to the OpenAI API and PubChem.
 
 ---
 
@@ -37,6 +40,7 @@ The frontend talks directly to a local FastAPI backend at `http://127.0.0.1:8000
 | **Agents** | Chat 1-on-1 with any domain agent in a persistent research session |
 | **Team Mission** | Broadcast one question to all 6 agents simultaneously — each saves entries independently |
 | **Team Communication** | 4-round structured debate: agents formalize → debate cross-domain → Maxwell synthesizes → PubChem data lookup → Decision Model produces engineering framework |
+| **Math Analysis** | Turing reads the full dictionary, computes cross-domain semantic clusters from embeddings, and extracts the formal mathematical grammar of chemistry — the foundation for NLP training |
 
 ---
 
@@ -51,8 +55,10 @@ The frontend talks directly to a local FastAPI backend at `http://127.0.0.1:8000
 | Bohr | Quantum Chemistry | Schrödinger equation, MO theory, DFT, Hartree-Fock |
 | Lavoisier | Stoichiometry | Mass balance, stoichiometric matrices, null space |
 | Maxwell | Synthesis | Cross-domain connections, universal operators, unified formalisms |
+| Decision Model | Engineering | 5-risk-category industrial safety framework (reactive / condensation / corrosion / deposit / unknown) |
+| **Turing** | **Math Linguistics** | **Reads full dictionary, clusters by embedding similarity, extracts formal grammar production rules for NLP training** |
 
-Each agent has a system prompt that instructs it to call `save_math_dictionary_entry` for every concept it identifies — so the dictionary grows automatically as you chat.
+Each domain agent (Faraday–Maxwell) calls `save_math_dictionary_entry` for every concept it identifies — so the dictionary grows automatically. All code representations are **Python 3** (numpy / scipy / sympy / networkx depending on domain).
 
 ---
 
@@ -95,6 +101,36 @@ Unlike Team Mission (parallel independent agents), Team Communication runs a str
 ### Why this matters
 
 The Decision Model deliberately separates **heuristic screening** (fast, conservative, minimal data) from **physical models** (first-principles equations with explicit validity ranges). This matches how real process engineers think: check the fast rules first, then run the physics if needed. The JSON schema in Section 6 is designed to be directly importable into a process safety system.
+
+---
+
+## Math Analysis Engine — how it works
+
+The **Math Analysis** page runs Turing, a data science agent whose only input is the accumulated Math Dictionary.
+
+```
+All dictionary entries
+        ↓
+Group by domain
+        ↓
+Compute pairwise cosine similarity (from stored embeddings)
+        ↓
+Flag cross-domain pairs with similarity > 0.72
+        ↓
+Feed structured context to Turing (GPT-4o)
+        ↓
+6-section analysis: operators · archetypes · clusters · grammar · NLP roadmap
+```
+
+Turing's output includes **production rules** — formal mappings from chemistry language patterns to mathematical structures. For example:
+
+```
+"rate of change of [X]"         => d[X]/dt          [kinetics]
+"equilibrium between A and B"   => K = exp(-ΔG/RT)  [thermochemistry / electrochemistry]
+"transition probability"        => |<ψ_f|H'|ψ_i>|²  [quantum chemistry]
+```
+
+These production rules are the training data layer for the future NLP model. The more entries in the dictionary, the richer and more precise the grammar becomes. Running Turing after every major session turns every agent conversation into a step toward a chemistry natural language processor.
 
 ---
 
@@ -148,12 +184,13 @@ Open [http://localhost:5173](http://localhost:5173)
 
 All AI calls go through your OpenAI account.
 
-| Model | Per chat message | Per Team Mission | Per Team Communication (4 rounds) |
-|-------|-----------------|-----------------|----------------------------------|
-| gpt-4o | ~$0.01–0.03 | ~$0.30–0.90 | ~$0.80–2.00 |
-| gpt-4o-mini | ~$0.001 | ~$0.03–0.09 | ~$0.08–0.20 |
+| Model | Per chat message | Per Team Mission | Per Team Communication (4 rounds) | Per Math Analysis |
+|-------|-----------------|-----------------|----------------------------------|-------------------|
+| gpt-4o | ~$0.01–0.03 | ~$0.30–0.90 | ~$0.80–2.00 | ~$0.05–0.20 |
+| gpt-4o-mini | ~$0.001 | ~$0.03–0.09 | ~$0.08–0.20 | ~$0.005–0.02 |
 
-> Team Communication costs more than Team Mission because it runs 4 rounds (vs 1), each agent in Round 2 receives all Round 1 responses as context, and Round 4's Decision Model has a long system prompt and receives the full debate plus real chemical data.
+> **Team Communication** costs more than Team Mission because it runs 4 rounds, each agent in Round 2 receives all Round 1 responses as context, and Round 4's Decision Model receives the full debate plus real PubChem data.
+> **Math Analysis** cost scales with dictionary size — more entries means a larger context window for Turing.
 
 To switch models, change one line in `backend/main.py`:
 
@@ -194,6 +231,7 @@ The 6 chemistry domains are seeded automatically on first startup.
 | DELETE | `/entities/{name}/{id}` | Delete entity |
 | POST | `/entities/{name}/filter` | Filter entities by field |
 | POST | `/semantic-search` | Semantic search over embedded dictionary entries |
+| POST | `/analyze-dictionary` | Turing reads full dictionary, computes embedding clusters, streams grammar analysis |
 
 ---
 
@@ -216,6 +254,7 @@ src/
     Agents.jsx
     Mission.jsx
     TeamCommunication.jsx
+    MathAnalysis.jsx
   components/
     dashboard/      — StatsRow, DomainCard, GraphView, AgentMonitor
     dictionary/     — CodePlayground, SemanticSearch
@@ -223,6 +262,8 @@ src/
     agents/         — MessageBubble
     layout/         — AppLayout (sidebar nav)
   api/
-    localAgentsClient.js  — Fetch wrapper for agent conversations + team communication SSE
+    localAgentsClient.js  — Fetch wrapper for agent conversations, team communication, and math analysis SSE
     entitiesClient.js     — Fetch wrapper for entity CRUD + semantic search
+
+ARCHITECTURE.md   — Full system diagrams (Mermaid)
 ```

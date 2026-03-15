@@ -10,6 +10,7 @@ Contributions are welcome at every level — from fixing a typo to adding an ent
 
 - **Add a new chemistry domain** — photochemistry, nuclear chemistry, polymer chemistry, etc.
 - **Improve agent system prompts** — make agents more rigorous, more domain-specific, or better at finding cross-domain connections
+- **Improve Turing's grammar extraction** — sharpen the production rules, add more grammar patterns, improve the NLP training recommendations
 - **Improve the Decision Model** — extend the 5-risk-category framework, add new physical models, or improve the JSON schema
 - **Add new external data sources** — NIST WebBook, ChemSpider, CAS registry, or DECHEMA corrosion data
 - **Improve the UI** — better visualization of the math dictionary, graph views, export formats
@@ -131,6 +132,64 @@ All system prompts live in `backend/agent_configs.py`. Good prompts:
 - Explicitly instruct the agent to call `save_math_dictionary_entry` for every concept
 - Give examples of the notation style (ASCII math preferred: `E = E0 - (R*T)/(n*F) * ln(Q)`)
 - Specify what a "good response" looks like (e.g. "saves 3-8 entries")
+- All `code_representation` instructions must specify **Python 3**. Use the appropriate library hint for the domain: `numpy`/`scipy` for calculus-heavy agents, `numpy.linalg` for Lavoisier, `networkx` for Kekulé, `sympy` for Bohr
+
+---
+
+## How to improve Turing (Math Analysis Engine)
+
+Turing's system prompt is `AGENT_CONFIGS["data_science_agent"]` in `backend/agent_configs.py`.
+
+### What Turing does
+
+Turing receives:
+1. All dictionary entries grouped by domain (concept name + math formalism)
+2. Pre-computed cross-domain similarity pairs (cosine similarity > 0.72 from stored embeddings)
+
+And produces 6 sections:
+1. Corpus statistics
+2. Universal mathematical operators (which appear across all 6 domains)
+3. Recurring equation archetypes (exponential decay, Boltzmann weighting, eigenvalue equations, etc.)
+4. Cross-domain semantic clusters (entries that are mathematically equivalent across domains)
+5. **Formal mathematical grammar** — production rules mapping chemistry language → math structure
+6. NLP training recommendations
+
+### The grammar production rules (Section 5)
+
+This is the most important output. Production rules look like:
+
+```
+"rate of change of [X]"       => d[X]/dt          [kinetics]
+"equilibrium between A and B" => K = exp(-ΔG/RT)  [thermochemistry]
+"transition probability"      => |<ψ_f|H'|ψ_i>|²  [quantum chemistry]
+```
+
+To improve the grammar:
+- Add more entries to the dictionary (more sessions = more training data for Turing)
+- Update Turing's prompt to ask for more rules (increase from 15–25 to 30–50)
+- Add a `save_grammar_rule` tool that saves individual rules to the database so they persist across sessions
+
+### Improving the similarity threshold
+
+The backend caps cross-domain pairs at cosine similarity > 0.72. Lower this to 0.65 to find weaker analogies, or raise to 0.80 for strict equivalences only. Change the constant in `_run_dictionary_analysis()` in `backend/main.py`.
+
+### The NLP roadmap
+
+The intended pipeline is:
+
+```
+Math Dictionary entries (accumulated)
+         ↓
+Turing grammar extraction
+         ↓
+Production rules as training data
+         ↓
+Fine-tune a sequence-to-sequence model on (chemistry sentence → math formalism) pairs
+         ↓
+Deploy as NLP endpoint: chemistry language in, LaTeX / Python code out
+```
+
+The dictionary is the training corpus. Every agent session adds labeled examples. Turing's production rules are the grammar labels. This is why building the dictionary is the most important thing you can do right now — it is the dataset.
 
 ---
 
